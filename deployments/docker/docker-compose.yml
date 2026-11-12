@@ -1,0 +1,60 @@
+# docker-compose for local development of RateGate with Redis.
+#
+# Usage:
+#   docker compose -f deployments/docker/docker-compose.yml up --build
+#
+# Then:
+#   curl -s localhost:8080/healthz
+#   curl -s -X POST localhost:8080/v1/check \
+#        -H 'content-type: application/json' \
+#        -d '{"key":"user:1","algorithm":"tokenbucket","limit":5,"refill_per_second":1}'
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+    restart: unless-stopped
+
+  rategate:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    image: rategate:v0.1.0
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      RATEGATE_STORE_BACKEND: redis
+      RATEGATE_REDIS_ADDR: redis:6379
+      RATEGATE_STORE_DEFAULT_ALGORITHM: tokenbucket
+      RATEGATE_SERVER_GRPC_PORT: "9090"
+      RATEGATE_SERVER_REST_PORT: "8080"
+      RATEGATE_LOG_LEVEL: info
+      RATEGATE_LOG_FORMAT: json
+      RATEGATE_OBSERVABILITY_METRICS_ENABLED: "true"
+      RATEGATE_OBSERVABILITY_TRACING_ENABLED: "false"
+      # Uncomment to require API key auth:
+      # RATEGATE_SERVER_API_KEY: change-me
+    ports:
+      - "8080:8080"   # REST
+      - "9090:9090"   # gRPC
+    restart: unless-stopped
+
+  # Optional: Prometheus scraping /metrics.
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: ["observability"]
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9091:9090"
+    depends_on:
+      - rategate
+    restart: unless-stopped
