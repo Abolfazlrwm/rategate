@@ -1,0 +1,52 @@
+# Sample config file for rategate-server.
+#
+# Copy to rategate.yaml and edit, or set the same keys via RATEGATE_* env.
+# Precedence: flag > env (RATEGATE_*) > this file > defaults.
+
+server:
+  grpc_host: "0.0.0.0"
+  grpc_port: 9090
+  rest_host: "0.0.0.0"
+  rest_port: 8080
+  # api_key: "change-me"   # uncomment to require x-api-key auth
+  read_timeout: 5s
+  write_timeout: 5s
+
+store:
+  backend: memory          # memory | redis
+  default_algorithm: tokenbucket
+  memory_shards: 256
+  memory_sw_shards: 256
+  memory_sw_granularity: 60
+  memory_sw_approximate: false
+
+redis:
+  addr: "localhost:6379"
+  # password: ""
+  db: 0
+  pool_size: 0             # 0 => GOMAXPROCS * 10
+  prefix: "rategate"
+
+policies:
+  - name: "default"
+    algorithm: tokenbucket
+    limit: 100
+    refill_per_second: 10
+  - name: "strict"
+    algorithm: tokenbucket
+    limit: 5
+    refill_per_second: 1
+  - name: "sms-per-minute"
+    algorithm: slidingwindow
+    limit: 3
+    window: 60s
+
+observability:
+  metrics_enabled: true
+  tracing_enabled: false
+  otlp_endpoint: ""        # e.g. "otel-collector:4317"
+  service_name: "rategate"
+
+log:
+  level: info              # debug | info | warn | error
+  format: json             # json | text
