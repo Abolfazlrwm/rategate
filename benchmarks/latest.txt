@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/Abolfazlrwm/rategate/internal/algorithms
+cpu: Intel(R) Xeon(R) Processor
+BenchmarkTokenBucket_CheckSingleKey-2          	26108007	        40.47 ns/op	       0 B/op	       0 allocs/op
+BenchmarkTokenBucket_CheckDistinctKeys-2       	 1708366	       619.7 ns/op	     128 B/op	       3 allocs/op
+BenchmarkTokenBucket_CheckParallel-2           	23594582	        53.84 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSlidingWindow_CheckSingleKey-2        	 7443505	       153.5 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSlidingWindow_CheckDistinctKeys-2     	  744762	      1971 ns/op	    2242 B/op	       4 allocs/op
+BenchmarkSlidingWindow_CheckParallel-2         	 6361839	       175.4 ns/op	       0 B/op	       0 allocs/op
+BenchmarkSlidingWindow_ApproxCheckParallel-2   	19540264	        60.57 ns/op	       0 B/op	       0 allocs/op
+PASS
+ok  	github.com/Abolfazlrwm/rategate/internal/algorithms	9.850s
+PASS
+ok  	github.com/Abolfazlrwm/rategate/internal/store	0.004s
