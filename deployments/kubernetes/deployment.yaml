@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rategate
+  namespace: rategate
+  labels:
+    app: rategate
+    app.kubernetes.io/name: rategate
+    app.kubernetes.io/version: "v0.1.0"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: rategate
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: rategate
+        app.kubernetes.io/name: rategate
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: rategate
+          image: ghcr.io/abolfazlrwm/rategate:v0.1.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --store=redis
+            - --redis-addr=$(REDIS_ADDR)
+          env:
+            - name: REDIS_ADDR
+              value: "redis:6379"
+            - name: RATEGATE_STORE_DEFAULT_ALGORITHM
+              value: "tokenbucket"
+            - name: RATEGATE_LOG_LEVEL
+              value: "info"
+            - name: RATEGATE_LOG_FORMAT
+              value: "json"
+            - name: RATEGATE_SERVER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: rategate-secrets
+                  key: api-key
+                  optional: true
+          ports:
+            - name: rest
+              containerPort: 8080
+              protocol: TCP
+            - name: grpc
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: rest
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: rest
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 1
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 1000m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rategate-pdb
+  namespace: rategate
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rategate

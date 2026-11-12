@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rategate
+  namespace: rategate
+  labels:
+    app: rategate
+    app.kubernetes.io/name: rategate
+spec:
+  type: ClusterIP
+  selector:
+    app: rategate
+  ports:
+    - name: rest
+      port: 80
+      targetPort: rest
+      protocol: TCP
+    - name: grpc
+      port: 9090
+      targetPort: grpc
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rategate-headless
+  namespace: rategate
+  labels:
+    app: rategate
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: rategate
+  ports:
+    - name: rest
+      port: 80
+      targetPort: rest
+    - name: grpc
+      port: 9090
+      targetPort: grpc
