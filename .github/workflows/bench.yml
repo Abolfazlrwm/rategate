@@ -1,0 +1,57 @@
+name: bench
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: benchmark (PR diff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Download deps
+        run: go mod download
+
+      # Baseline: benchmarks on the PR's merge-base (the common ancestor with main).
+      - name: Run benchmarks on baseline
+        run: |
+          git checkout $(git merge-base origin/main HEAD)
+          go test -bench=. -benchmem -run='^$$' -count=5 ./internal/algorithms/ ./internal/store/ ./internal/server/ 2>&1 | tee /tmp/bench-base.txt
+
+      # Candidate: benchmarks on the PR HEAD.
+      - name: Run benchmarks on PR HEAD
+        run: |
+          git checkout ${{ github.event.pull_request.head.sha }}
+          go test -bench=. -benchmem -run='^$$' -count=5 ./internal/algorithms/ ./internal/store/ ./internal/server/ 2>&1 | tee /tmp/bench-head.txt
+
+      - name: Compare with benchstat
+        run: |
+          go install golang.org/x/perf/cmd/benchstat@latest
+          benchstat /tmp/bench-base.txt /tmp/bench-head.txt | tee /tmp/bench-diff.txt
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const diff = fs.readFileSync('/tmp/bench-diff.txt', 'utf8');
+            const body = `## Benchmark diff (benchstat)\n\n\`\`\`\n${diff}\n\`\`\`\n\nA regression of >10% on any benchmark requires review before merge.`;
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });

@@ -1,0 +1,86 @@
+version: 2
+
+project_name: rategate
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: rategate-server
+    main: ./cmd/rategate-server
+    binary: rategate-server
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+      - -X github.com/Abolfazlrwm/rategate/internal/version.Version={{.Version}}
+      - -X github.com/Abolfazlrwm/rategate/internal/version.Commit={{.ShortCommit}}
+      - -X github.com/Abolfazlrwm/rategate/internal/version.BuildDate={{.Date}}
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+
+  - id: rategate-bench
+    main: ./cmd/rategate-bench
+    binary: rategate-bench
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - api/proto/*.proto
+      - deployments/**/*
+      - docs/**/*
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "merge conflict"
+  groups:
+    - title: "Breaking"
+      regexp: "^.*!:"
+      order: 0
+    - title: "Features"
+      regexp: "^feat:"
+      order: 1
+    - title: "Fixes"
+      regexp: "^fix:"
+      order: 2
+    - title: "Performance"
+      regexp: "^perf:"
+      order: 3
+    - title: "Others"
+      order: 999
+
+release:
+  draft: false
+  prerelease: auto
+  name_template: "rategate {{ .Version }}"

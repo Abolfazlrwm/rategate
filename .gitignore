@@ -1,0 +1,45 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+/rategate-server
+/rategate-bench
+
+# Build artifacts
+coverage.out
+coverage.html
+bench-results.txt
+profile.out
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# Go workspace files
+go.work
+go.work.sum
+
+# Vendor (we use modules, not vendoring by default)
+/vendor/
+
+# Docker
+docker/data/
