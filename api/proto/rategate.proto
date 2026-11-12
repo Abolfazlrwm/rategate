@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package rategate.v1;
+
+option go_package = "github.com/Abolfazlrwm/rategate/api/proto;rategatepb";
+
+// RateGateService is the primary gRPC interface for rate-limit checks.
+//
+// A Check is a single atomic evaluation of whether one unit of work may
+// proceed for a given (key, policy) pair. The server applies the configured
+// algorithm and store and returns the decision.
+service RateGateService {
+  // CheckRateLimit evaluates the rate limit for the given key under the
+  // named policy (or, if limit_name is empty, the server's default
+  // algorithm with inline parameters from the policy table).
+  rpc CheckRateLimit(CheckRateLimitRequest) returns (CheckRateLimitResponse);
+
+  // HealthCheck reports liveness/readiness. The server returns SERVING when
+  // it can accept traffic; NOT_SERVING when the store is unreachable or a
+  // fatal error has occurred.
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message CheckRateLimitRequest {
+  // key is the rate-limit identity (e.g. "user:42", "ip:10.0.0.1",
+  // "tenant:acme:api:write"). Required.
+  string key = 1;
+
+  // limit_name references a pre-configured policy by name. Optional; when
+  // omitted the server applies the default algorithm with the inline
+  // fields below.
+  string limit_name = 2;
+
+  // Inline policy (used only when limit_name is empty).
+  string algorithm = 3;            // "tokenbucket" | "slidingwindow"
+  int64  limit = 4;                // burst capacity / window count
+  double refill_per_second = 5;    // token bucket only
+  int64  window_ms = 6;            // sliding window only
+}
+
+message CheckRateLimitResponse {
+  bool   allowed = 1;
+  int64  remaining = 2;
+  int64  limit = 3;
+  int64  reset_at_unix_ms = 4;
+  int64  retry_after_ms = 5;
+  string algorithm = 6;            // the algorithm actually used
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  enum ServingStatus {
+    SERVING_STATUS_UNSPECIFIED = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  ServingStatus status = 1;
+}
