@@ -178,6 +178,15 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 			PoolSize:  cfg.Redis.PoolSize,
 			KeyPrefix: cfg.Redis.Prefix,
 		}), nil
+	case "redis-cluster":
+		return store.NewClusterStore(store.ClusterOptions{
+			Addrs:         cfg.Cluster.Addrs,
+			Password:      cfg.Cluster.Password,
+			PoolSize:      cfg.Cluster.PoolSize,
+			RouteRandomly: cfg.Cluster.RouteRandomly,
+			MaxRedirects:  cfg.Cluster.MaxRedirects,
+			KeyPrefix:     cfg.Cluster.Prefix,
+		}), nil
 	default:
 		return nil, fmt.Errorf("unknown store backend %q", cfg.Store.Backend)
 	}
