@@ -3,8 +3,8 @@
 // Flags:
 //
 //	--config <path>         path to a YAML config file (optional)
-//	--store <memory|redis>  overrides store.backend
-//	--redis-addr <host:port>  overrides redis.addr
+//	--store <memory|redis|redis-cluster>  overrides store.backend
+//	--redis-addr <host:port>  overrides redis.addr (single-node redis only)
 //	--grpc-port <n>         overrides server.grpc_port
 //	--rest-port <n>         overrides server.rest_port
 //
@@ -44,7 +44,7 @@ func main() {
 
 func run() error {
 	cfgPath := flag.String("config", "", "path to a YAML config file")
-	storeBackend := flag.String("store", "", "override store.backend (memory|redis)")
+	storeBackend := flag.String("store", "", "override store.backend (memory|redis|redis-cluster)")
 	redisAddr := flag.String("redis-addr", "", "override redis.addr")
 	grpcPort := flag.Int("grpc-port", 0, "override server.grpc_port")
 	restPort := flag.Int("rest-port", 0, "override server.rest_port")
