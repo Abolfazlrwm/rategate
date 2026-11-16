@@ -2,8 +2,8 @@
 //
 // admin_http.go — REST admin API for runtime policy management.
 //
-// Routes (all under /v1/admin, subject to the same AuthMiddleware as /v1/check
-// when server.api_key is set):
+// Routes (all under /v1/admin; gated by server.admin_api_key when set,
+// otherwise by server.api_key, otherwise unauthenticated):
 //
 //	GET    /v1/admin/policies          list all policies (sorted by name)
 //	POST   /v1/admin/policies          create a policy (409 if name exists)
@@ -59,9 +59,18 @@ func (j policyJSON) toConfig() config.PolicyConfig {
 }
 
 // registerAdminRoutes wires the /v1/admin/policies CRUD endpoints onto the
-// given engine. It is called from HTTPServer.Engine().
+// given engine. The group is gated by the admin API key when one is configured
+// (server.admin_api_key); otherwise it falls back to the shared client API
+// key, preserving Phase 2 behavior. It is called from HTTPServer.Engine().
 func (h *HTTPServer) registerAdminRoutes(r *gin.Engine) {
+	adminKey := h.core.cfg.Server.AdminAPIKey
+	if adminKey == "" {
+		adminKey = h.core.cfg.Server.APIKey // backward-compatible fallback
+	}
 	g := r.Group("/v1/admin/policies")
+	if adminKey != "" {
+		g.Use(AuthMiddleware(adminKey))
+	}
 	g.GET("", h.handleListPolicies)
 	g.POST("", h.handleCreatePolicy)
 	g.GET("/:name", h.handleGetPolicy)
@@ -75,19 +84,24 @@ func (h *HTTPServer) handleListPolicies(c *gin.Context) {
 	for _, p := range all {
 		out = append(out, policyToJSON(p))
 	}
+	h.core.recordAdminOp("list", "success")
 	c.JSON(http.StatusOK, gin.H{"policies": out})
 }
 
 func (h *HTTPServer) handleCreatePolicy(c *gin.Context) {
 	var body policyJSON
 	if err := c.ShouldBindJSON(&body); err != nil {
+		h.core.recordAdminOp("create", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := h.core.Policies().Create(body.toConfig()); err != nil {
+		h.core.recordAdminOp("create", "error")
 		c.JSON(adminStatusFor(err), gin.H{"error": err.Error()})
 		return
 	}
+	h.core.recordAdminOp("create", "success")
+	h.core.refreshPolicyCount()
 	c.JSON(http.StatusCreated, policyToJSON(body.toConfig()))
 }
 
@@ -95,9 +109,11 @@ func (h *HTTPServer) handleGetPolicy(c *gin.Context) {
 	name := c.Param("name")
 	p, ok := h.core.Policies().Get(name)
 	if !ok {
+		h.core.recordAdminOp("get", "error")
 		c.JSON(http.StatusNotFound, gin.H{"error": admin.ErrPolicyNotFound{Name: name}.Error()})
 		return
 	}
+	h.core.recordAdminOp("get", "success")
 	c.JSON(http.StatusOK, policyToJSON(p))
 }
 
@@ -105,6 +121,7 @@ func (h *HTTPServer) handleUpdatePolicy(c *gin.Context) {
 	name := c.Param("name")
 	var body policyJSON
 	if err := c.ShouldBindJSON(&body); err != nil {
+		h.core.recordAdminOp("update", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -114,22 +131,29 @@ func (h *HTTPServer) handleUpdatePolicy(c *gin.Context) {
 		body.Name = name
 	}
 	if body.Name != name {
+		h.core.recordAdminOp("update", "error")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name in body must match name in path"})
 		return
 	}
 	if err := h.core.Policies().Update(body.toConfig()); err != nil {
+		h.core.recordAdminOp("update", "error")
 		c.JSON(adminStatusFor(err), gin.H{"error": err.Error()})
 		return
 	}
+	// Update does not change the policy count, so the gauge is not refreshed.
+	h.core.recordAdminOp("update", "success")
 	c.JSON(http.StatusOK, policyToJSON(body.toConfig()))
 }
 
 func (h *HTTPServer) handleDeletePolicy(c *gin.Context) {
 	name := c.Param("name")
 	if err := h.core.Policies().Delete(name); err != nil {
+		h.core.recordAdminOp("delete", "error")
 		c.JSON(adminStatusFor(err), gin.H{"error": err.Error()})
 		return
 	}
+	h.core.recordAdminOp("delete", "success")
+	h.core.refreshPolicyCount()
 	c.Status(http.StatusNoContent)
 }
 

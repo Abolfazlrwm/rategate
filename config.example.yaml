@@ -8,8 +8,13 @@ server:
   grpc_port: 9090
   rest_host: "0.0.0.0"
   rest_port: 8080
-  # api_key: "change-me"   # uncomment to require x-api-key auth on /v1/check
-  #                       # AND /v1/admin/* (admin endpoints share the gate)
+  # api_key: "change-me"        # uncomment to require x-api-key on /v1/check
+  #                             # and gRPC CheckRateLimit. Empty disables auth.
+  # admin_api_key: "admin-me"   # separate credential for /v1/admin/* and the
+  #                             # gRPC AdminService. Empty falls back to api_key
+  #                             # (so a deployment with only api_key keeps its
+  #                             # Phase 2 behavior). A distinct admin key is
+  #                             # strongly recommended in production.
   read_timeout: 5s
   write_timeout: 5s
 
@@ -24,6 +29,10 @@ store:
   # Adaptive limiter tuning (only used by "adaptive" policies).
   memory_adaptive_shards: 256
   memory_adaptive_max_factor: 4.0   # effective limit in [floor, floor*max_factor]
+  # fail_open: false               # admit a request when the store errors
+  #                               # (e.g. Redis down) instead of failing closed.
+  #                               # Default false (deny) is the safer choice;
+  #                               # true trades safety for availability.
 
 redis:
   addr: "localhost:6379"

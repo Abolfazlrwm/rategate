@@ -151,8 +151,9 @@ Prometheus exposition. Metrics:
 ## Admin REST API
 
 Policies can be managed at runtime (no restart) under `/v1/admin/policies`.
-These endpoints share the same `x-api-key` auth gate as `/v1/check` when
-`server.api_key` is set. Mutations are applied to a thread-safe registry and
+These endpoints are gated by `server.admin_api_key` when set (falling back to
+`server.api_key`); see [Authentication](#authentication). Mutations are applied
+to a thread-safe registry and
 are visible to subsequent `/v1/check` calls immediately.
 
 ### `GET /v1/admin/policies`
@@ -203,15 +204,40 @@ re-seeds from file/env.
 
 ## Authentication
 
-When `server.api_key` is set (env `RATEGATE_SERVER_API_KEY`), both transports
-require the key:
+RateGate has two independent credentials, configured via `server.api_key`
+(env `RATEGATE_SERVER_API_KEY`) and `server.admin_api_key`
+(env `RATEGATE_SERVER_ADMIN_API_KEY`).
+
+- **`server.api_key`** gates the data plane: `POST /v1/check` (REST) and
+  `rategate.v1.RateGateService/CheckRateLimit` (gRPC).
+- **`server.admin_api_key`** gates the admin plane: `/v1/admin/*` (REST) and
+  `rategate.v1.AdminService` (gRPC). When empty, admin routes fall back to
+  `server.api_key` (Phase 2 behavior). Setting a distinct admin key is strongly
+  recommended so check clients cannot create or delete policies.
+
+Both transports read the credential from the same place:
 
 - REST: `x-api-key: <key>` header.
-- gRPC: `x-api-key` metadata key.
+- gRPC: `x-api-key` metadata key (enforced by a unary server interceptor with
+  per-method key selection).
 
-Requests without a valid key get `401 Unauthorized` (REST) / `Unauthenticated`
-(gRPC). An empty `api_key` disables auth — suitable only for trusted sidecar
-deployments where the network is isolated.
+`/healthz`, `/readyz`, and `/metrics` are intentionally **public** so kubelet
+probes and a metrics scraper can reach them without a credential; restrict
+`/metrics` at the network layer if your environment requires it. gRPC health
+and reflection are likewise public.
+
+Requests without a valid key get `401 Unauthorized` (REST) /
+`Unauthenticated` (gRPC). Leaving both keys empty disables auth — suitable
+only for trusted sidecar deployments where the network is isolated.
+
+### Store failure mode
+
+`store.fail_open` (default `false`) controls what happens when the backing
+store errors mid-Check. Fail-closed (default) surfaces the error and denies the
+request (`500` REST / `Internal` gRPC) — the limiter is treated as broken, not
+as silently denying. `fail_open=true` admits the request instead, so a Redis
+outage does not take down the protected service, at the cost of an unbounded
+burst while the store is unavailable. Choose deliberately.
 
 ## Go client SDK
 

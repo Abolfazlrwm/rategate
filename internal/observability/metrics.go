@@ -9,6 +9,8 @@
 //   - rategate_denied_total{store,algorithm}
 //   - rategate_request_duration_seconds{store,algorithm} (histogram)
 //   - rategate_store_latency_seconds{store,operation} (histogram)
+//   - rategate_policies (gauge — current registered policy count)
+//   - rategate_admin_operations_total{operation,status}
 //
 // All metrics are registered on a single *prometheus.Registry so the server
 // can expose them at /metrics without colliding with the default registry.
@@ -28,6 +30,15 @@ type Metrics struct {
 	DeniedTotal    *prometheus.CounterVec
 	RequestLatency *prometheus.HistogramVec
 	StoreLatency   *prometheus.HistogramVec
+
+	// Policies is the current number of registered policies (a gauge so it
+	// tracks Create/Delete over the process lifetime). Set by Server.New and
+	// refreshed after every size-changing admin mutation.
+	Policies prometheus.Gauge
+
+	// AdminOpsTotal counts admin API calls by operation and outcome, so
+	// operators can alert on policy churn or admin error rates.
+	AdminOpsTotal *prometheus.CounterVec
 }
 
 // NewMetrics returns a Metrics set registered on its own registry. Pass the
@@ -65,6 +76,18 @@ func NewMetrics() (*Metrics, *prometheus.Registry) {
 			Help:      "Per-store backend latency.",
 			Buckets:   prometheus.ExponentialBuckets(0.0001, 2, 16), // 0.1ms -> ~3s
 		}, []string{"store", "operation"}),
+
+		Policies: factory.NewGauge(prometheus.GaugeOpts{
+			Namespace: "rategate",
+			Name:      "policies",
+			Help:      "Number of currently registered rate-limit policies.",
+		}),
+
+		AdminOpsTotal: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "rategate",
+			Name:      "admin_operations_total",
+			Help:      "Admin API operations, partitioned by operation and outcome.",
+		}, []string{"operation", "status"}),
 	}
 	return m, reg
 }
@@ -88,4 +111,15 @@ func (m *Metrics) ObserveRequestLatency(store, algorithm string, seconds float64
 // ObserveStoreLatency records a single store-backend operation duration.
 func (m *Metrics) ObserveStoreLatency(store, operation string, seconds float64) {
 	m.StoreLatency.WithLabelValues(store, operation).Observe(seconds)
+}
+
+// RecordAdminOp increments the admin operations counter. operation is one of
+// list|get|create|update|delete; status is "success" or "error".
+func (m *Metrics) RecordAdminOp(operation, status string) {
+	m.AdminOpsTotal.WithLabelValues(operation, status).Inc()
+}
+
+// SetPolicyCount sets the policy-count gauge to the current Registry size.
+func (m *Metrics) SetPolicyCount(n int) {
+	m.Policies.Set(float64(n))
 }

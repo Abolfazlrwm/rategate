@@ -7,6 +7,7 @@
 //	--redis-addr <host:port>  overrides redis.addr (single-node redis only)
 //	--grpc-port <n>         overrides server.grpc_port
 //	--rest-port <n>         overrides server.rest_port
+//	--version               print version and exit
 //
 // Environment variables (RATEGATE_*) take precedence over the config file
 // but are overridden by flags. See internal/config for the full schema.
@@ -27,6 +28,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/Abolfazlrwm/rategate/internal/config"
 	"github.com/Abolfazlrwm/rategate/internal/observability"
@@ -48,7 +50,13 @@ func run() error {
 	redisAddr := flag.String("redis-addr", "", "override redis.addr")
 	grpcPort := flag.Int("grpc-port", 0, "override server.grpc_port")
 	restPort := flag.Int("rest-port", 0, "override server.rest_port")
+	versionFlag := flag.Bool("version", false, "print rategate-server version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.String())
+		return nil
+	}
 
 	v := config.New()
 	if *cfgPath != "" {
@@ -93,8 +101,22 @@ func run() error {
 	}
 
 	// gRPC server with the RateGateService + health, plus the admin service
-	// (Phase 2) for runtime policy CRUD alongside the check API.
-	grpcSrv := grpc.NewServer()
+	// (Phase 2) for runtime policy CRUD alongside the check API. Keepalive
+	// enforcement guards against misbehaving clients that ping too aggressively;
+	// the server parameters tell clients to ping every 30s and declare the
+	// connection dead after 10s without a pong (so stale connections are
+	// reaped without waiting for a TCP timeout).
+	grpcSrv := grpc.NewServer(
+		grpc.UnaryInterceptor(core.AuthUnaryInterceptor()),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second, // reject pings more frequent than this
+			PermitWithoutStream: true,             // allow pings even when no RPC is active
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    30 * time.Second, // suggest a ping after 30s idle
+			Timeout: 10 * time.Second, // wait 10s for a pong before closing
+		}),
+	)
 	grpcAdapter := server.NewGRPCServer(core)
 	grpcAdapter.RegisterServer(grpcSrv)
 	server.NewGRPCAdminServer(core).RegisterServer(grpcSrv)
@@ -199,15 +221,17 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 // redactedSnapshot returns a map of non-sensitive config fields for logging.
 func redactedSnapshot(cfg *config.Config) map[string]any {
 	return map[string]any{
-		"store_backend":     cfg.Store.Backend,
-		"default_algorithm": cfg.Store.DefaultAlgorithm,
-		"grpc_port":         cfg.Server.GRPCPort,
-		"rest_port":         cfg.Server.RESTPort,
-		"redis_addr":        cfg.Redis.Addr,
-		"policies":          len(cfg.Policies),
-		"metrics_enabled":   cfg.Observability.MetricsEnabled,
-		"tracing_enabled":   cfg.Observability.TracingEnabled,
-		"auth_enabled":      cfg.Server.APIKey != "",
+		"store_backend":      cfg.Store.Backend,
+		"default_algorithm":  cfg.Store.DefaultAlgorithm,
+		"fail_open":          cfg.Store.FailOpen,
+		"grpc_port":          cfg.Server.GRPCPort,
+		"rest_port":          cfg.Server.RESTPort,
+		"redis_addr":         cfg.Redis.Addr,
+		"policies":           len(cfg.Policies),
+		"metrics_enabled":    cfg.Observability.MetricsEnabled,
+		"tracing_enabled":    cfg.Observability.TracingEnabled,
+		"auth_enabled":       cfg.Server.APIKey != "",
+		"admin_auth_enabled": cfg.Server.AdminAPIKey != "",
 	}
 }
 

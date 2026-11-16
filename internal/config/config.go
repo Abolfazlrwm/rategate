@@ -66,6 +66,14 @@ type ServerConfig struct {
 	// auth — suitable only for trusted sidecar deployments.
 	APIKey string `mapstructure:"api_key"`
 
+	// AdminAPIKey, if non-empty, is the credential required by the admin
+	// endpoints (/v1/admin/* REST, rategate.v1.AdminService gRPC). When empty,
+	// admin endpoints fall back to APIKey so a deployment that only sets
+	// server.api_key keeps its Phase 2 behavior. Setting a distinct admin key
+	// is strongly recommended in production: check clients and policy
+	// operators then hold separate, least-privilege credentials.
+	AdminAPIKey string `mapstructure:"admin_api_key"`
+
 	// ReadTimeout / WriteTimeout bound the REST handlers.
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
@@ -90,6 +98,15 @@ type StoreConfig struct {
 	// the memory backend).
 	MemoryAdaptiveShards    int     `mapstructure:"memory_adaptive_shards"`
 	MemoryAdaptiveMaxFactor float64 `mapstructure:"memory_adaptive_max_factor"`
+
+	// FailOpen controls the Check behavior when the backing store returns an
+	// error (e.g. Redis unreachable). The default (false) is fail-closed: the
+	// check surfaces the error and the request is not admitted (the limiter is
+	// treated as broken, not as silently denying). Setting fail_open=true makes
+	// the server admit the request instead, so a limiter outage does not take
+	// down the protected service — a tradeoff of safety for availability that
+	// each deployment must make deliberately.
+	FailOpen bool `mapstructure:"fail_open"`
 }
 
 // RedisConfig holds the Redis connection parameters.
@@ -195,11 +212,13 @@ func New() *viper.Viper {
 	v.SetDefault("server.rest_host", DefaultRESTHost)
 	v.SetDefault("server.rest_port", DefaultRESTPort)
 	v.SetDefault("server.api_key", DefaultAPIKey)
+	v.SetDefault("server.admin_api_key", "") // empty => admin falls back to server.api_key
 	v.SetDefault("server.read_timeout", 5*time.Second)
 	v.SetDefault("server.write_timeout", 5*time.Second)
 
 	v.SetDefault("store.backend", DefaultStoreBackend)
 	v.SetDefault("store.default_algorithm", DefaultAlgorithm)
+	v.SetDefault("store.fail_open", false) // fail-closed by default
 	v.SetDefault("store.memory_shards", 256)
 	v.SetDefault("store.memory_sw_shards", 256)
 	v.SetDefault("store.memory_sw_granularity", 60)

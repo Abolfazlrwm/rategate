@@ -66,17 +66,27 @@ func (h *HTTPServer) Engine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	// Middleware order matters: recovery first (so panics don't kill the
-	// process), then logging, then auth.
+	// process), then logging. Auth is applied per-route-group below so that
+	// the check and admin APIs can hold separate credentials.
 	r.Use(RecoveryMiddleware(h.core.logger))
 	r.Use(LoggingMiddleware(h.core.logger))
-	if h.core.cfg.Server.APIKey != "" {
-		r.Use(AuthMiddleware(h.core.cfg.Server.APIKey))
-	}
 
-	r.POST("/v1/check", h.handleCheck)
+	// Public routes — intentionally unauthenticated so kubelet liveness/
+	// readiness probes and a scraped /metrics endpoint can reach them without
+	// holding a credential.
 	r.GET("/healthz", h.handleHealthz)
 	r.GET("/readyz", h.handleReadyz)
 	r.GET("/metrics", h.metricsNS.handler)
+
+	// /v1/check is gated by the shared client API key when configured.
+	if h.core.cfg.Server.APIKey != "" {
+		r.POST("/v1/check", AuthMiddleware(h.core.cfg.Server.APIKey), h.handleCheck)
+	} else {
+		r.POST("/v1/check", h.handleCheck)
+	}
+
+	// Admin routes use a dedicated admin key when set; otherwise they fall
+	// back to the shared client key (backward compatible with Phase 2).
 	h.registerAdminRoutes(r)
 	return r
 }

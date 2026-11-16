@@ -50,18 +50,23 @@ func (a *GRPCAdminServer) ListPolicies(_ context.Context, _ *pb.ListPoliciesRequ
 	for _, p := range all {
 		out = append(out, policyToProto(p))
 	}
+	a.core.recordAdminOp("list", "success")
 	return &pb.ListPoliciesResponse{Policies: out}, nil
 }
 
 // CreatePolicy implements pb.AdminServiceServer.
 func (a *GRPCAdminServer) CreatePolicy(_ context.Context, req *pb.CreatePolicyRequest) (*pb.Policy, error) {
 	if req.GetPolicy() == nil {
+		a.core.recordAdminOp("create", "error")
 		return nil, status.Error(codes.InvalidArgument, "policy is required")
 	}
 	p := policyFromProto(req.GetPolicy())
 	if err := a.core.Policies().Create(p); err != nil {
+		a.core.recordAdminOp("create", "error")
 		return nil, status.Error(adminCodeFor(err), err.Error())
 	}
+	a.core.recordAdminOp("create", "success")
+	a.core.refreshPolicyCount()
 	return policyToProto(p), nil
 }
 
@@ -69,8 +74,10 @@ func (a *GRPCAdminServer) CreatePolicy(_ context.Context, req *pb.CreatePolicyRe
 func (a *GRPCAdminServer) GetPolicy(_ context.Context, req *pb.GetPolicyRequest) (*pb.Policy, error) {
 	p, ok := a.core.Policies().Get(req.GetName())
 	if !ok {
+		a.core.recordAdminOp("get", "error")
 		return nil, status.Error(codes.NotFound, admin.ErrPolicyNotFound{Name: req.GetName()}.Error())
 	}
+	a.core.recordAdminOp("get", "success")
 	return policyToProto(p), nil
 }
 
@@ -78,6 +85,7 @@ func (a *GRPCAdminServer) GetPolicy(_ context.Context, req *pb.GetPolicyRequest)
 // the policy name (no rename via Update), mirroring the REST PUT rule.
 func (a *GRPCAdminServer) UpdatePolicy(_ context.Context, req *pb.UpdatePolicyRequest) (*pb.Policy, error) {
 	if req.GetPolicy() == nil {
+		a.core.recordAdminOp("update", "error")
 		return nil, status.Error(codes.InvalidArgument, "policy is required")
 	}
 	name := req.GetName()
@@ -86,19 +94,26 @@ func (a *GRPCAdminServer) UpdatePolicy(_ context.Context, req *pb.UpdatePolicyRe
 		name = p.Name
 	}
 	if p.Name != name {
+		a.core.recordAdminOp("update", "error")
 		return nil, status.Error(codes.InvalidArgument, "name in request must match policy.name")
 	}
 	if err := a.core.Policies().Update(p); err != nil {
+		a.core.recordAdminOp("update", "error")
 		return nil, status.Error(adminCodeFor(err), err.Error())
 	}
+	// Update does not change the policy count, so the gauge is not refreshed.
+	a.core.recordAdminOp("update", "success")
 	return policyToProto(p), nil
 }
 
 // DeletePolicy implements pb.AdminServiceServer.
 func (a *GRPCAdminServer) DeletePolicy(_ context.Context, req *pb.DeletePolicyRequest) (*pb.DeletePolicyResponse, error) {
 	if err := a.core.Policies().Delete(req.GetName()); err != nil {
+		a.core.recordAdminOp("delete", "error")
 		return nil, status.Error(adminCodeFor(err), err.Error())
 	}
+	a.core.recordAdminOp("delete", "success")
+	a.core.refreshPolicyCount()
 	return &pb.DeletePolicyResponse{}, nil
 }
 

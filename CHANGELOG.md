@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Configurable store failure mode: `store.fail_open` (default `false`). When
+  the backing store errors (e.g. Redis unreachable), the default (fail-closed)
+  surfaces the error and denies the request; setting `fail_open=true` admits
+  the request instead so a limiter outage does not take down the protected
+  service (availability over safety — an explicit operator tradeoff).
+- Separate admin API key: `server.admin_api_key`. Admin endpoints
+  (`/v1/admin/*` REST, `rategate.v1.AdminService` gRPC) accept a credential
+  distinct from check traffic; empty falls back to `server.api_key` (Phase 2
+  behavior). A dedicated admin key is recommended in production.
+- gRPC server reflection: RateGate gRPC servers are now discoverable by
+  `grpcurl` (lists `RateGateService`, `AdminService`, health, reflection).
+- gRPC keepalive enforcement + server parameters (`MinTime` 10s, `Time` 30s,
+  `Timeout` 10s) to reap stale connections and reject overly frequent pings.
+- `--version` flag on `rategate-server`.
+- Policy-count gauge (`rategate_policies`) and admin operation counter
+  (`rategate_admin_operations_total{operation,status}`) exported on `/metrics`.
+- `SECURITY.md` and `CODE_OF_CONDUCT.md`.
+
+### Changed
+- REST auth is now per-route-group: `/v1/check` is gated by `server.api_key`,
+  `/v1/admin/*` by `server.admin_api_key` (fallback `server.api_key`), and
+  `/healthz`, `/readyz`, `/metrics` are public (kubelet probes and a scraped
+  metrics endpoint no longer require a credential).
+- `server.New` seeds the `rategate_policies` gauge with the file-loaded policy
+  count at startup, so the gauge is correct before any admin mutation.
+
+### Security
+- The gRPC transport is no longer unauthenticated when `server.api_key` is set:
+  a unary server interceptor enforces `server.api_key` on `CheckRateLimit` and
+  `server.admin_api_key` on the `AdminService`, mirroring the REST auth gate.
+  Health and reflection remain public. Previously a gRPC client could call
+  `CheckRateLimit` / `AdminService` with no credential even when REST auth was
+  enabled.
+
 ### Planned (Phase 3)
 - Per-tenant quotas with serial enforcement (multi-tenancy).
 - gRPC streaming for live rate-limit decision observation.
