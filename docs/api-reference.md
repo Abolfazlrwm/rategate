@@ -19,7 +19,7 @@ Evaluates the rate limit for `key` under the named policy (or, if
 | --- | --- | --- | --- |
 | `key` | string | yes | Rate-limit identity, e.g. `user:42`, `ip:10.0.0.1`, `tenant:acme:api:write`. |
 | `limit_name` | string | no | Name of a pre-configured policy. Overrides inline fields. |
-| `algorithm` | string | no* | `tokenbucket` or `slidingwindow`. Defaults to the server's configured default. |
+| `algorithm` | string | no* | `tokenbucket`, `slidingwindow`, or `adaptive`. Defaults to the server's configured default. |
 | `limit` | int64 | no* | Burst capacity (token bucket) or window count (sliding window). |
 | `refill_per_second` | double | no* | Token refill rate. Token bucket only. |
 | `window_ms` | int64 | no* | Sliding window duration in ms. Sliding window only. |
@@ -129,6 +129,59 @@ Prometheus exposition. Metrics:
 | `rategate_request_duration_seconds` | histogram | store, algorithm | End-to-end Check latency. |
 | `rategate_store_latency_seconds` | histogram | store, operation | Store backend latency. |
 
+## Admin REST API
+
+Policies can be managed at runtime (no restart) under `/v1/admin/policies`.
+These endpoints share the same `x-api-key` auth gate as `/v1/check` when
+`server.api_key` is set. Mutations are applied to a thread-safe registry and
+are visible to subsequent `/v1/check` calls immediately.
+
+### `GET /v1/admin/policies`
+
+List all policies, sorted by name.
+
+```json
+{"policies":[{"name":"strict","algorithm":"tokenbucket","limit":5,"refill_per_second":1,"window_ms":0}]}
+```
+
+### `POST /v1/admin/policies`
+
+Create a policy. `201 Created` on success; `409 Conflict` if the name exists;
+`400 Bad Request` if the policy fails validation (missing name, non-positive
+limit, unknown algorithm, or missing the algorithm-specific field).
+
+```json
+{"name":"burst","algorithm":"adaptive","limit":200,"window_ms":10000}
+```
+
+### `GET /v1/admin/policies/:name`
+
+Fetch one policy. `404` if missing.
+
+### `PUT /v1/admin/policies/:name`
+
+Update an existing policy. The `name` in the body must match the path (no
+rename via PUT). `200` on success; `404` if missing; `400` on validation
+failure or name mismatch.
+
+### `DELETE /v1/admin/policies/:name`
+
+Delete a policy. `204 No Content` on success; `404` if missing. A deleted
+policy is immediately unknown to `/v1/check` (references return `400`).
+
+**Policy JSON shape**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `name` | string | yes | Unique policy name. |
+| `algorithm` | string | yes | `tokenbucket`, `slidingwindow`, or `adaptive`. |
+| `limit` | int64 | yes | `> 0`. Floor (adaptive) / burst (tokenbucket) / window count (slidingwindow). |
+| `refill_per_second` | double | tokenbucket | `> 0` for tokenbucket. |
+| `window_ms` | int64 | slidingwindow / adaptive | `> 0`. Window duration in ms. |
+
+Runtime changes are not persisted back to the config file; a process restart
+re-seeds from file/env.
+
 ## Authentication
 
 When `server.api_key` is set (env `RATEGATE_SERVER_API_KEY`), both transports
@@ -174,11 +227,13 @@ variables:
 | `RATEGATE_SERVER_GRPC_PORT` | 9090 | gRPC port. |
 | `RATEGATE_SERVER_REST_PORT` | 8080 | REST port. |
 | `RATEGATE_SERVER_API_KEY` | "" | API key (empty disables auth). |
-| `RATEGATE_STORE_BACKEND` | memory | `memory` or `redis`. |
-| `RATEGATE_STORE_DEFAULT_ALGORITHM` | tokenbucket | Default algorithm. |
-| `RATEGATE_REDIS_ADDR` | localhost:6379 | Redis host:port. |
+| `RATEGATE_STORE_BACKEND` | memory | `memory`, `redis`, or `redis-cluster`. |
+| `RATEGATE_STORE_DEFAULT_ALGORITHM` | tokenbucket | `tokenbucket`, `slidingwindow`, or `adaptive`. |
+| `RATEGATE_REDIS_ADDR` | localhost:6379 | Redis host:port (single-node `redis` backend). |
 | `RATEGATE_REDIS_PASSWORD` | "" | Redis AUTH password. |
 | `RATEGATE_REDIS_PREFIX` | rategate | Key namespace. |
+| `RATEGATE_CLUSTER_*` | — | Redis Cluster settings (`addrs`, `route_randomly`, `max_redirects`, `prefix`); see `config.example.yaml`. `addrs` is configured via file or env list. |
+| `RATEGATE_STORE_MEMORY_ADAPTIVE_MAX_FACTOR` | 4.0 | Cap for the adaptive limiter: effective limit in `[floor, floor*max_factor]`. |
 | `RATEGATE_LOG_LEVEL` | info | debug/info/warn/error. |
 | `RATEGATE_LOG_FORMAT` | json | json or text. |
 | `RATEGATE_OBSERVABILITY_METRICS_ENABLED` | true | Enable /metrics. |
