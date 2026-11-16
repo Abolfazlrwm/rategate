@@ -68,6 +68,9 @@ type Algorithm interface {
 //     is the token refill rate. Burst = Limit.
 //   - SlidingWindow: Limit is the max events in any Window-sized sliding
 //     window. RefillPerSecond is ignored.
+//   - Adaptive: Limit is the steady-state floor (minimum effective limit);
+//     Window is the AIMD sampling window. RefillPerSecond is ignored. The
+//     effective limit varies in [Limit, Limit*MaxFactor]. See adaptive.go.
 //
 // All fields must be > 0 for a well-formed policy; Check will reject a
 // zero-value Policy with ErrInvalidPolicy.
@@ -97,6 +100,10 @@ func (p Policy) Validate(algo string) error {
 		if p.Window <= 0 {
 			return ErrInvalidPolicy{Algo: algo, Reason: "window must be > 0"}
 		}
+	case "adaptive":
+		if p.Window <= 0 {
+			return ErrInvalidPolicy{Algo: algo, Reason: "window must be > 0"}
+		}
 	}
 	return nil
 }
@@ -104,7 +111,7 @@ func (p Policy) Validate(algo string) error {
 // ErrInvalidPolicy is returned when a [Policy] is malformed for the
 // requested algorithm.
 type ErrInvalidPolicy struct {
-	Algo  string
+	Algo   string
 	Reason string
 }
 
@@ -117,4 +124,5 @@ func (e ErrInvalidPolicy) Error() string {
 const (
 	AlgorithmTokenBucket   = "tokenbucket"
 	AlgorithmSlidingWindow = "slidingwindow"
+	AlgorithmAdaptive      = "adaptive"
 )

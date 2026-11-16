@@ -165,10 +165,12 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 	switch cfg.Store.Backend {
 	case "memory":
 		return store.NewMemoryStore(store.MemoryOptions{
-			TBShards:      cfg.Store.MemoryShards,
-			SWShards:      cfg.Store.MemorySWShards,
-			SWGranularity: cfg.Store.MemorySWGran,
-			SWApproximate: cfg.Store.MemorySWApprox,
+			TBShards:          cfg.Store.MemoryShards,
+			SWShards:          cfg.Store.MemorySWShards,
+			SWGranularity:     cfg.Store.MemorySWGran,
+			SWApproximate:     cfg.Store.MemorySWApprox,
+			AdaptiveShards:    cfg.Store.MemoryAdaptiveShards,
+			AdaptiveMaxFactor: cfg.Store.MemoryAdaptiveMaxFactor,
 		}), nil
 	case "redis":
 		return store.NewRedisStore(store.RedisOptions{

@@ -73,10 +73,11 @@ type ServerConfig struct {
 
 // StoreConfig selects the persistence backend.
 type StoreConfig struct {
-	// Backend is "memory" or "redis".
+	// Backend is "memory", "redis", or "redis-cluster".
 	Backend string `mapstructure:"backend"`
 
 	// DefaultAlgorithm is applied when a Check request omits it.
+	// One of "tokenbucket", "slidingwindow", "adaptive".
 	DefaultAlgorithm string `mapstructure:"default_algorithm"`
 
 	// Memory options (only used when Backend == "memory").
@@ -84,6 +85,11 @@ type StoreConfig struct {
 	MemorySWShards int  `mapstructure:"memory_sw_shards"`
 	MemorySWGran   int  `mapstructure:"memory_sw_granularity"`
 	MemorySWApprox bool `mapstructure:"memory_sw_approximate"`
+
+	// Adaptive options (used when an "adaptive" policy is evaluated against
+	// the memory backend).
+	MemoryAdaptiveShards    int     `mapstructure:"memory_adaptive_shards"`
+	MemoryAdaptiveMaxFactor float64 `mapstructure:"memory_adaptive_max_factor"`
 }
 
 // RedisConfig holds the Redis connection parameters.
@@ -167,6 +173,8 @@ func New() *viper.Viper {
 	v.SetDefault("store.memory_sw_shards", 256)
 	v.SetDefault("store.memory_sw_granularity", 60)
 	v.SetDefault("store.memory_sw_approximate", false)
+	v.SetDefault("store.memory_adaptive_shards", 256)
+	v.SetDefault("store.memory_adaptive_max_factor", 4.0)
 
 	v.SetDefault("redis.addr", DefaultRedisAddr)
 	v.SetDefault("redis.password", "")
@@ -239,9 +247,9 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("cluster.addrs is required when store.backend=redis-cluster")
 	}
 	switch c.Store.DefaultAlgorithm {
-	case "tokenbucket", "slidingwindow":
+	case "tokenbucket", "slidingwindow", "adaptive":
 	default:
-		return fmt.Errorf("invalid store.default_algorithm %q: want tokenbucket|slidingwindow", c.Store.DefaultAlgorithm)
+		return fmt.Errorf("invalid store.default_algorithm %q: want tokenbucket|slidingwindow|adaptive", c.Store.DefaultAlgorithm)
 	}
 	if c.Server.GRPCPort < 0 || c.Server.GRPCPort > 65535 {
 		return fmt.Errorf("invalid server.grpc_port %d", c.Server.GRPCPort)
@@ -264,6 +272,10 @@ func (c *Config) Validate() error {
 		case "slidingwindow":
 			if p.Window <= 0 {
 				return fmt.Errorf("policies[%d] %s: window must be > 0 for slidingwindow", i, p.Name)
+			}
+		case "adaptive":
+			if p.Window <= 0 {
+				return fmt.Errorf("policies[%d] %s: window must be > 0 for adaptive", i, p.Name)
 			}
 		default:
 			return fmt.Errorf("policies[%d] %s: unknown algorithm %q", i, p.Name, p.Algorithm)

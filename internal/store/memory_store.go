@@ -23,24 +23,38 @@ import (
 type MemoryStore struct {
 	tokenBucket   *algorithms.TokenBucket
 	slidingWindow *algorithms.SlidingWindow
+	adaptive      *algorithms.AdaptiveLimiter
 }
 
 // MemoryOptions configures the internal algorithm shards/granularity.
 type MemoryOptions struct {
-	TBShards        int
-	SWShards        int
-	SWGranularity   int
-	SWApproximate   bool
+	TBShards      int
+	SWShards      int
+	SWGranularity int
+	SWApproximate bool
+
+	// AdaptiveShards is the shard count for the in-memory adaptive limiter.
+	// Zero falls back to 256.
+	AdaptiveShards int
+
+	// AdaptiveMaxFactor bounds the adaptive limiter's effective limit above
+	// the configured floor: cap = floor * AdaptiveMaxFactor. Zero falls back
+	// to 4. See algorithms.AdaptiveOptions.
+	AdaptiveMaxFactor float64
 }
 
 // NewMemoryStore returns a MemoryStore with the given options.
 //
 // Zero-value options fall back to the algorithms' own defaults (256 shards,
-// granularity 60, exact counting).
+// granularity 60, exact counting, adaptive max factor 4).
 func NewMemoryStore(opts MemoryOptions) *MemoryStore {
 	return &MemoryStore{
 		tokenBucket:   algorithms.NewTokenBucket(opts.TBShards),
 		slidingWindow: algorithms.NewSlidingWindow(algorithms.SlidingWindowOptions{Shards: opts.SWShards, Granularity: opts.SWGranularity, Approximate: opts.SWApproximate}),
+		adaptive: algorithms.NewAdaptiveLimiter(algorithms.AdaptiveOptions{
+			Shards:    opts.AdaptiveShards,
+			MaxFactor: opts.AdaptiveMaxFactor,
+		}),
 	}
 }
 
@@ -55,6 +69,8 @@ func (m *MemoryStore) Check(_ context.Context, algo, key string, policy algorith
 		return m.tokenBucket.Check(key, policy, now)
 	case algorithms.AlgorithmSlidingWindow:
 		return m.slidingWindow.Check(key, policy, now)
+	case algorithms.AlgorithmAdaptive:
+		return m.adaptive.Check(key, policy, now)
 	default:
 		return algorithms.Decision{Allowed: false, Limit: policy.Limit, ResetAt: now}, ErrUnknownAlgorithm{Algo: algo}
 	}
@@ -67,4 +83,5 @@ func (m *MemoryStore) Close() error { return nil }
 func (m *MemoryStore) Reset() {
 	m.tokenBucket.Reset()
 	m.slidingWindow.Reset()
+	m.adaptive.Reset()
 }
