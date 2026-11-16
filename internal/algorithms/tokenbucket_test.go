@@ -136,10 +136,10 @@ func TestTokenBucket_InvalidPolicy(t *testing.T) {
 	now := time.Now()
 
 	cases := []Policy{
-		{Limit: 0, RefillPerSecond: 1},      // zero limit
-		{Limit: -1, RefillPerSecond: 1},     // negative limit
-		{Limit: 5, RefillPerSecond: 0},      // zero refill
-		{Limit: 5, RefillPerSecond: -1},     // negative refill
+		{Limit: 0, RefillPerSecond: 1},  // zero limit
+		{Limit: -1, RefillPerSecond: 1}, // negative limit
+		{Limit: 5, RefillPerSecond: 0},  // zero refill
+		{Limit: 5, RefillPerSecond: -1}, // negative refill
 	}
 	for i, p := range cases {
 		d, err := tb.Check("k", p, now)
@@ -238,9 +238,9 @@ func TestTokenBucket_ResetAtIncreasing(t *testing.T) {
 
 func TestPolicy_Validate(t *testing.T) {
 	cases := []struct {
-		p     Policy
-		algo  string
-		ok    bool
+		p    Policy
+		algo string
+		ok   bool
 	}{
 		{Policy{Limit: 10, RefillPerSecond: 1}, "tokenbucket", true},
 		{Policy{Limit: 10, Window: time.Minute}, "slidingwindow", true},

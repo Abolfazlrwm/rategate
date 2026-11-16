@@ -29,11 +29,11 @@ import (
 )
 
 type benchResult struct {
-	total      int64
-	allowed    int64
-	denied     int64
-	errors     int64
-	durations  []time.Duration
+	total     int64
+	allowed   int64
+	denied    int64
+	errors    int64
+	durations []time.Duration
 }
 
 func main() {
@@ -104,7 +104,7 @@ func run(target, path string, duration time.Duration, concurrency, rps, keys int
 					return
 				}
 
-				key := fmt.Sprintf("bench:%d", rand.Intn(keys))
+				key := fmt.Sprintf("bench:%d", rand.Intn(keys)) //nolint:gosec // G404: math/rand is intentional for synthetic load-test traffic shaping.
 				body, _ := json.Marshal(map[string]any{
 					"key":               key,
 					"algorithm":         "tokenbucket",

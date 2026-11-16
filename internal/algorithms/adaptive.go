@@ -126,7 +126,7 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 	}
 
 	floor := float64(policy.Limit)
-	cap := floor * a.opts.maxFactor
+	limitCap := floor * a.opts.maxFactor
 	increaseStep := math.Max(1.0, floor*a.opts.increaseFrac)
 
 	shard := a.shardFor(key)
@@ -144,9 +144,9 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 	if !now.Before(windowEnd) {
 		total := st.count + st.rejects
 		switch {
-		case total > st.prevTotal && st.limit < cap:
+		case total > st.prevTotal && st.limit < limitCap:
 			// Demand rising: additively grow headroom toward the cap.
-			st.limit = math.Min(cap, st.limit+increaseStep)
+			st.limit = math.Min(limitCap, st.limit+increaseStep)
 		case total < st.prevTotal && st.limit > floor:
 			// Demand falling: multiplicatively retract toward the floor.
 			st.limit = math.Max(floor, st.limit*a.opts.decreaseFactor)
@@ -158,10 +158,10 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 		windowEnd = now.Add(policy.Window)
 	}
 
+	// st.limit is clamped to [floor, cap] and floor = policy.Limit, which
+	// Validate guarantees is >= 1, so int64(st.limit) is always >= 1: no
+	// further floor guard is needed (or reachable).
 	effLimit := int64(st.limit)
-	if effLimit < 1 {
-		effLimit = 1
-	}
 
 	allowed := st.count < effLimit
 	var remaining int64
@@ -180,12 +180,10 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 		ResetAt:   windowEnd,
 	}
 	if !allowed {
-		// Retry at the next window boundary, where counters reset.
-		wait := windowEnd.Sub(now)
-		if wait < 0 {
-			wait = 0
-		}
-		d.RetryAfter = wait
+		// Retry at the next window boundary, where counters reset. windowEnd
+		// is always in the future here: the close branch resets it to
+		// now+Window, and the no-close branch only runs when now < windowEnd.
+		d.RetryAfter = windowEnd.Sub(now)
 	}
 	return d, nil
 }

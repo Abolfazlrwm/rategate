@@ -10,9 +10,8 @@ import (
 // sendAt issues n requests for key at time `now` against lim, returning the
 // number admitted, denied, and the effective Limit reported by the FIRST
 // request in this batch (which is the post-window-close limit for this window).
-func sendAt(t *testing.T, lim *AdaptiveLimiter, key string, policy Policy, now time.Time, n int) (admitted, denied int64, firstLimit int64) {
+func sendAt(t *testing.T, lim *AdaptiveLimiter, key string, policy Policy, now time.Time, n int) (admitted, denied, firstLimit int64) {
 	t.Helper()
-	policy.Validate(AlgorithmAdaptive)
 	for i := 0; i < n; i++ {
 		d, err := lim.Check(key, policy, now)
 		if err != nil {
@@ -89,7 +88,7 @@ func TestAdaptiveLimiter_GrowsOnRisingDemand(t *testing.T) {
 	// loop well past that to confirm saturation and clamping.
 	for w := 0; w < 20; w++ {
 		now := t0.Add(time.Duration(w) * time.Second)
-		demand := int(10 * (w + 1))
+		demand := 10 * (w + 1)
 		_, _, firstLimit := sendAt(t, lim, "k", policy, now, demand)
 		if firstLimit < prev {
 			t.Fatalf("window %d: limit=%d decreased from %d (rising demand)", w, firstLimit, prev)

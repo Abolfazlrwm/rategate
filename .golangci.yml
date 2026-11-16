@@ -1,79 +1,95 @@
+version: "2"
 run:
-  timeout: 5m
-  go: "1.23"
+  go: "1.26"
   modules-download-mode: readonly
-
+output:
+  formats:
+    text:
+      path: stdout
 linters:
   enable:
-    - errcheck
-    - gosec
-    - revive
-    - gocyclo
-    - gofmt
-    - goimports
-    - unused
-    - staticcheck
-    - ineffassign
-    - misspell
-    - unconvert
-    - prealloc
-    - nolintlint
-    - gocritic
     - bodyclose
+    - contextcheck
+    - gocritic
+    - gocyclo
+    - gosec
+    - misspell
+    - nilerr
+    - noctx
+    - nolintlint
+    - prealloc
+    - revive
     - rowserrcheck
     - sqlclosecheck
-    - noctx
-    - nilerr
-    - contextcheck
-
-linters-settings:
-  gocyclo:
-    min-complexity: 15
-  revive:
-    severity: warning
+    - unconvert
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam  # Options structs passed by value for SDK ergonomics; mirrors the existing NewRedisStore convention
+        - httpNoBody # nil request body is idiomatic in handlers/tests
+    gocyclo:
+      min-complexity: 15
+    gosec:
+      excludes:
+        - G104  # unhandled errors are caught by errcheck
+        - G115  # int->uint32 for shard modulo; shard counts are tiny (false positive)
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    prealloc:
+      simple: true
+      for-loops: true
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          disabled: false
+        - name: var-naming
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: if-return
+        - name: increment-decrement
+        - name: range
+        - name: error-naming
+        - name: receiver-naming
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-        disabled: false
-      - name: var-naming
-      - name: context-as-argument
-      - name: error-return
-      - name: error-strings
-      - name: if-return
-      - name: increment-decrement
-      - name: range
-      - name: error-naming
-      - name: receiver-naming
-  gosec:
-    excludes:
-      - G104  # unhandled errors are caught by errcheck
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - performance
-      - style
-  prealloc:
-    simple: true
-    for-loops: true
-  nolintlint:
-    require-explanation: true
-    require-specific: true
-
+      - linters:
+          - err113
+          - gocyclo
+          - gosec
+          - noctx
+          - prealloc
+        path: _test\.go
+      - linters:
+          - gocyclo
+        path: cmd/
+    paths:
+      - third_party$
+      - builtin$
+      - examples/
 issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - gocyclo
-        - prealloc
-        - goerr113
-    - path: cmd/
-      linters:
-        - gocyclo
   max-issues-per-linter: 0
   max-same-issues: 0
   fix: false
-
-output:
-  formats:
-    - format: colored-line-number
-  sort-results: true
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples/

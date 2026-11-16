@@ -10,7 +10,7 @@ import (
 
 // doJSON issues a request with an optional JSON body against engine and
 // returns the recorder and the decoded JSON map (or nil on empty body).
-func doJSON(t *testing.T, engine http.Handler, method, path string, body any) (*httptest.ResponseRecorder, map[string]any) {
+func doJSON(t *testing.T, engine http.Handler, method, path string, body any) (rec *httptest.ResponseRecorder, parsed map[string]any) {
 	t.Helper()
 	var buf *bytes.Buffer
 	if body != nil {
