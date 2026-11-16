@@ -139,6 +139,37 @@ type PolicyConfig struct {
 	Window          time.Duration `mapstructure:"window"`
 }
 
+// Validate checks a single policy for internal consistency: a non-empty name,
+// a positive limit, and the algorithm-specific field (refill for tokenbucket,
+// window for slidingwindow / adaptive). It is used by [Config.Validate] at
+// startup and by the admin Registry on Create/Update so that runtime-created
+// policies are held to the same rules as file-loaded ones.
+func (p PolicyConfig) Validate() error {
+	if p.Name == "" {
+		return fmt.Errorf("policy: name is required")
+	}
+	if p.Limit <= 0 {
+		return fmt.Errorf("policy %q: limit must be > 0", p.Name)
+	}
+	switch p.Algorithm {
+	case "tokenbucket":
+		if p.RefillPerSecond <= 0 {
+			return fmt.Errorf("policy %q: refill_per_second must be > 0 for tokenbucket", p.Name)
+		}
+	case "slidingwindow":
+		if p.Window <= 0 {
+			return fmt.Errorf("policy %q: window must be > 0 for slidingwindow", p.Name)
+		}
+	case "adaptive":
+		if p.Window <= 0 {
+			return fmt.Errorf("policy %q: window must be > 0 for adaptive", p.Name)
+		}
+	default:
+		return fmt.Errorf("policy %q: unknown algorithm %q", p.Name, p.Algorithm)
+	}
+	return nil
+}
+
 // ObservabilityConfig toggles metrics/tracing.
 type ObservabilityConfig struct {
 	MetricsEnabled bool   `mapstructure:"metrics_enabled"`
@@ -258,27 +289,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid server.rest_port %d", c.Server.RESTPort)
 	}
 	for i, p := range c.Policies {
-		if p.Name == "" {
-			return fmt.Errorf("policies[%d]: name is required", i)
-		}
-		if p.Limit <= 0 {
-			return fmt.Errorf("policies[%d] %s: limit must be > 0", i, p.Name)
-		}
-		switch p.Algorithm {
-		case "tokenbucket":
-			if p.RefillPerSecond <= 0 {
-				return fmt.Errorf("policies[%d] %s: refill_per_second must be > 0 for tokenbucket", i, p.Name)
-			}
-		case "slidingwindow":
-			if p.Window <= 0 {
-				return fmt.Errorf("policies[%d] %s: window must be > 0 for slidingwindow", i, p.Name)
-			}
-		case "adaptive":
-			if p.Window <= 0 {
-				return fmt.Errorf("policies[%d] %s: window must be > 0 for adaptive", i, p.Name)
-			}
-		default:
-			return fmt.Errorf("policies[%d] %s: unknown algorithm %q", i, p.Name, p.Algorithm)
+		if err := p.Validate(); err != nil {
+			return fmt.Errorf("policies[%d]: %w", i, err)
 		}
 	}
 	return nil
