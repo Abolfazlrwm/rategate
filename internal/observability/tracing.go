@@ -18,6 +18,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // TracerProvider wraps the OTel SDK provider so the caller can shut it down
@@ -33,7 +34,7 @@ type TracerProvider struct {
 func InitTracing(ctx context.Context, endpoint, serviceName string) (*TracerProvider, error) {
 	if endpoint == "" {
 		// No-op provider: instrumentation calls become cheap and discard spans.
-		tp := trace.NewNoopTracerProvider()
+		tp := noop.NewTracerProvider()
 		otel.SetTracerProvider(tp)
 		return &TracerProvider{tp: nil}, nil
 	}

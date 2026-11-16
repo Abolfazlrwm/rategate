@@ -27,10 +27,10 @@ type MemoryStore struct {
 
 // MemoryOptions configures the internal algorithm shards/granularity.
 type MemoryOptions struct {
-	TBShards        int
-	SWShards        int
-	SWGranularity   int
-	SWApproximate   bool
+	TBShards      int
+	SWShards      int
+	SWGranularity int
+	SWApproximate bool
 }
 
 // NewMemoryStore returns a MemoryStore with the given options.

@@ -104,7 +104,7 @@ func (p Policy) Validate(algo string) error {
 // ErrInvalidPolicy is returned when a [Policy] is malformed for the
 // requested algorithm.
 type ErrInvalidPolicy struct {
-	Algo  string
+	Algo   string
 	Reason string
 }
 

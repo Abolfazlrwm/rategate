@@ -57,16 +57,16 @@ type Options struct {
 }
 
 // GinMiddleware returns a Gin handler that rate-limits incoming requests.
-func GinMiddleware(l Limiter, opts Options) gin.HandlerFunc {
+func GinMiddleware(l Limiter, opts Options) gin.HandlerFunc { //nolint:gocritic // value keeps the public API unchanged; the 80B copy happens once per registration, not per request
 	if opts.KeyFunc == nil {
 		opts.KeyFunc = func(r *http.Request) string { return r.RemoteAddr }
 	}
 	return func(c *gin.Context) {
 		key := opts.KeyFunc(c.Request)
-		req := buildRequest(key, opts)
+		req := buildRequest(key, &opts)
 		resp, err := l.Check(c.Request.Context(), req)
 		if err != nil {
-			handleError(c, opts, err)
+			handleError(c, &opts, err)
 			return
 		}
 		c.Header("X-RateLimit-Limit", fmt.Sprintf("%d", resp.Limit))
@@ -87,13 +87,13 @@ func GinMiddleware(l Limiter, opts Options) gin.HandlerFunc {
 }
 
 // StdlibMiddleware wraps an http.Handler with rate limiting.
-func StdlibMiddleware(l Limiter, opts Options, h http.Handler) http.Handler {
+func StdlibMiddleware(l Limiter, opts Options, h http.Handler) http.Handler { //nolint:gocritic // value keeps the public API unchanged; the 80B copy happens once per registration, not per request
 	if opts.KeyFunc == nil {
 		opts.KeyFunc = func(r *http.Request) string { return r.RemoteAddr }
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := opts.KeyFunc(r)
-		req := buildRequest(key, opts)
+		req := buildRequest(key, &opts)
 		resp, err := l.Check(r.Context(), req)
 		if err != nil {
 			if opts.FailClosed {
@@ -122,7 +122,7 @@ func StdlibMiddleware(l Limiter, opts Options, h http.Handler) http.Handler {
 }
 
 // buildRequest constructs a client.CheckRequest from the middleware options.
-func buildRequest(key string, opts Options) client.CheckRequest {
+func buildRequest(key string, opts *Options) client.CheckRequest {
 	return client.CheckRequest{
 		Key:             key,
 		LimitName:       opts.PolicyName,
@@ -134,7 +134,7 @@ func buildRequest(key string, opts Options) client.CheckRequest {
 }
 
 // handleError is shared by the Gin middleware for the error path.
-func handleError(c *gin.Context, opts Options, err error) {
+func handleError(c *gin.Context, opts *Options, err error) {
 	if opts.FailClosed {
 		c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{"error": "rate limiter unavailable"})
 		return

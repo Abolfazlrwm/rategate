@@ -9,6 +9,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -33,7 +34,6 @@ func main() {
 	metrics, reg := observability.NewMetrics()
 	logger := observability.NewLogger("info", "text")
 	s := store.NewMemoryStore(store.MemoryOptions{TBShards: 64})
-	defer s.Close()
 
 	core := server.New(cfg, s, metrics, logger)
 	core.MarkReady()
@@ -47,5 +47,9 @@ func main() {
 	}
 
 	fmt.Println("standalone rategate listening on :8090 (POST /v1/check, GET /metrics)")
-	log.Fatal(srv.ListenAndServe())
+	serveErr := srv.ListenAndServe()
+	if serveErr != nil && !errors.Is(serveErr, http.ErrServerClosed) {
+		log.Fatal(serveErr)
+	}
+	s.Close()
 }

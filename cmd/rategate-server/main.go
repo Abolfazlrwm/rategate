@@ -87,7 +87,8 @@ func run() error {
 
 	// gRPC listener
 	grpcAddr := fmt.Sprintf("%s:%d", cfg.Server.GRPCHost, cfg.Server.GRPCPort)
-	grpcLis, err := net.Listen("tcp", grpcAddr)
+	var listenCfg net.ListenConfig
+	grpcLis, err := listenCfg.Listen(context.Background(), "tcp", grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen grpc: %w", err)
 	}
