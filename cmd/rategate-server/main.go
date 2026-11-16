@@ -92,10 +92,12 @@ func run() error {
 		return fmt.Errorf("listen grpc: %w", err)
 	}
 
-	// gRPC server with the RateGateService + health.
+	// gRPC server with the RateGateService + health, plus the admin service
+	// (Phase 2) for runtime policy CRUD alongside the check API.
 	grpcSrv := grpc.NewServer()
 	grpcAdapter := server.NewGRPCServer(core)
 	grpcAdapter.RegisterServer(grpcSrv)
+	server.NewGRPCAdminServer(core).RegisterServer(grpcSrv)
 
 	// REST server (Gin) with the /metrics handler bound to our private registry.
 	metricsHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})

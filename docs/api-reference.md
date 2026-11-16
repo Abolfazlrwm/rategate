@@ -51,6 +51,25 @@ Returns `SERVING` when the server is ready and the store is reachable,
 | Invalid inline policy (limit <= 0, etc.) | `InvalidArgument` |
 | Store error (Redis down) | `Internal` |
 
+## Admin gRPC API
+
+Service `rategate.v1.AdminService` mirrors the REST admin API and shares the
+same thread-safe Registry, so a policy created via gRPC is immediately visible
+to REST, to `CheckRateLimit`, and vice versa.
+
+| RPC | Request | Response | Error codes |
+| --- | --- | --- | --- |
+| `ListPolicies` | `ListPoliciesRequest` | `ListPoliciesResponse{repeated Policy}` | — |
+| `CreatePolicy` | `CreatePolicyRequest{policy}` | `Policy` | `AlreadyExists`, `InvalidArgument` |
+| `GetPolicy` | `GetPolicyRequest{name}` | `Policy` | `NotFound` |
+| `UpdatePolicy` | `UpdatePolicyRequest{name, policy}` | `Policy` | `NotFound`, `InvalidArgument` (incl. name mismatch) |
+| `DeletePolicy` | `DeletePolicyRequest{name}` | `DeletePolicyResponse` | `NotFound` |
+
+`Policy` fields: `name`, `algorithm` (`tokenbucket` | `slidingwindow` |
+`adaptive`), `limit`, `refill_per_second`, `window_ms`. On `UpdatePolicy`,
+`name` must equal `policy.name` (no rename via Update), mirroring the REST PUT
+rule.
+
 ## REST
 
 Base URL: `http://<host>:8080`

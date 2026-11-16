@@ -28,10 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   demand, multiplicatively retracts toward the floor on falling demand,
   holds steady under constant load (hysteresis). In-memory only. See
   [ADR-0004](docs/adr/0004-adaptive-aimd-limiter.md).
-- Runtime admin REST API: CRUD on `/v1/admin/policies` (GET list, POST
-  create, GET/PUT/DELETE `:name`) backed by a thread-safe
-  `internal/admin.Registry`; created/updated policies are immediately
-  visible to `/v1/check` without a restart.
+- Runtime admin API (REST + gRPC): CRUD on policies backed by a thread-safe
+  `internal/admin.Registry`; created/updated policies are immediately visible
+  to `CheckRateLimit` / `/v1/check` without a restart. REST:
+  `/v1/admin/policies` (GET list, POST create, GET/PUT/DELETE `:name`). gRPC:
+  `rategate.v1.AdminService` (ListPolicies / CreatePolicy / GetPolicy /
+  UpdatePolicy / DeletePolicy). Both transports share one Registry.
 - `cluster.*` and `store.memory_adaptive_*` config sections; an adaptive
   policy example and a cluster section in `config.example.yaml`.
 
