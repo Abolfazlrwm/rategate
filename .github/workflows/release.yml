@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.26"
           cache: true
 
       - name: GoReleaser
@@ -32,29 +32,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  docker:
-    name: Docker image (ghcr.io)
-    runs-on: ubuntu-latest
-    needs: goreleaser
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set version
-        id: ver
-        run: echo "VERSION=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: deployments/docker/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/abolfazlrwm/rategate:latest
-            ghcr.io/abolfazlrwm/rategate:${{ steps.ver.outputs.VERSION }}
-          build-args: |
-            VERSION=${{ steps.ver.outputs.VERSION }}
-            COMMIT=${{ github.sha }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# Container images (multi-arch amd64+arm64, GHCR) are built by
+# docker-publish.yml on the same v* tag push, so this workflow stays focused
+# on the goreleaser Release (source archives + binaries).
