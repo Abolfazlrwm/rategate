@@ -210,6 +210,7 @@ func (s *SlidingWindow) checkApprox(st *swState, policy Policy, now time.Time) (
 	tau := policy.Window.Seconds() / 2.0
 	dt := now.Sub(st.lastDecay).Seconds()
 	if dt > 0 {
+		// Exponential decay: scale approxCount by exp(-dt/tau).
 		factor := mathExp(-dt / tau)
 		st.approxCount *= factor
 		st.lastDecay = now
@@ -269,7 +270,7 @@ func newSWState(granularity int, window time.Duration, now time.Time, approx boo
 func (s *SlidingWindow) shardFor(key string) *swShard {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(key))
-	return s.shards[h.Sum32()%uint32(len(s.shards))] //nolint:gosec // shard count is a small slice sized once in NewSlidingWindow; len cannot exceed uint32
+	return s.shards[h.Sum32()%uint32(len(s.shards))]
 }
 
 // Reset clears all state.

@@ -1,5 +1,6 @@
 version: "2"
 run:
+  go: "1.26"
   modules-download-mode: readonly
 output:
   formats:
@@ -27,11 +28,15 @@ linters:
         - diagnostic
         - performance
         - style
+      disabled-checks:
+        - hugeParam  # Options structs passed by value for SDK ergonomics; mirrors the existing NewRedisStore convention
+        - httpNoBody # nil request body is idiomatic in handlers/tests
     gocyclo:
       min-complexity: 15
     gosec:
       excludes:
-        - G104
+        - G104  # unhandled errors are caught by errcheck
+        - G115  # int->uint32 for shard modulo; shard counts are tiny (false positive)
     nolintlint:
       require-explanation: true
       require-specific: true
@@ -64,6 +69,7 @@ linters:
           - err113
           - gocyclo
           - gosec
+          - noctx
           - prealloc
         path: _test\.go
       - linters:
@@ -72,7 +78,7 @@ linters:
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - examples/
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
@@ -86,4 +92,4 @@ formatters:
     paths:
       - third_party$
       - builtin$
-      - examples$
+      - examples/

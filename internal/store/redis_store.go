@@ -248,13 +248,8 @@ func parseTokenBucketResult(res any, policy algorithms.Policy, now time.Time) (a
 	}
 
 	var remaining int64
-	// An absent or unparsable header leaves remaining at 0: the proxy
-	// always sets X-RateLimit-Remaining on an allowed reply, so an
-	// unparsable value is treated as an empty bucket.
 	_, _ = fmt.Sscanf(remainingStr, "%d", &remaining)
 	var retryMs int64
-	// Same fallback: no parsable Retry-After header means no suggested
-	// wait (retryMs stays 0).
 	_, _ = fmt.Sscanf(retryStr, "%d", &retryMs)
 
 	d := algorithms.Decision{
@@ -288,14 +283,11 @@ func parseSlidingWindowResult(res any, policy algorithms.Policy, now time.Time) 
 	}
 
 	var remaining int64
-	// Same header fallback contract as above: unparsable means 0
-	// (and the explicit clamp below keeps it non-negative).
 	_, _ = fmt.Sscanf(remainingStr, "%d", &remaining)
 	if remaining < 0 {
 		remaining = 0
 	}
 	var retryMs int64
-	// No parsable Retry-After header means no suggested wait.
 	_, _ = fmt.Sscanf(retryStr, "%d", &retryMs)
 
 	d := algorithms.Decision{

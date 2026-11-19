@@ -3,10 +3,11 @@
 // Flags:
 //
 //	--config <path>         path to a YAML config file (optional)
-//	--store <memory|redis>  overrides store.backend
-//	--redis-addr <host:port>  overrides redis.addr
+//	--store <memory|redis|redis-cluster>  overrides store.backend
+//	--redis-addr <host:port>  overrides redis.addr (single-node redis only)
 //	--grpc-port <n>         overrides server.grpc_port
 //	--rest-port <n>         overrides server.rest_port
+//	--version               print version and exit
 //
 // Environment variables (RATEGATE_*) take precedence over the config file
 // but are overridden by flags. See internal/config for the full schema.
@@ -27,6 +28,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 
 	"github.com/Abolfazlrwm/rategate/internal/config"
 	"github.com/Abolfazlrwm/rategate/internal/observability"
@@ -44,11 +46,17 @@ func main() {
 
 func run() error {
 	cfgPath := flag.String("config", "", "path to a YAML config file")
-	storeBackend := flag.String("store", "", "override store.backend (memory|redis)")
+	storeBackend := flag.String("store", "", "override store.backend (memory|redis|redis-cluster)")
 	redisAddr := flag.String("redis-addr", "", "override redis.addr")
 	grpcPort := flag.Int("grpc-port", 0, "override server.grpc_port")
 	restPort := flag.Int("rest-port", 0, "override server.rest_port")
+	versionFlag := flag.Bool("version", false, "print rategate-server version and exit")
 	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(version.String())
+		return nil
+	}
 
 	v := config.New()
 	if *cfgPath != "" {
@@ -87,16 +95,31 @@ func run() error {
 
 	// gRPC listener
 	grpcAddr := fmt.Sprintf("%s:%d", cfg.Server.GRPCHost, cfg.Server.GRPCPort)
-	var listenCfg net.ListenConfig
-	grpcLis, err := listenCfg.Listen(context.Background(), "tcp", grpcAddr)
+	grpcLis, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", grpcAddr)
 	if err != nil {
 		return fmt.Errorf("listen grpc: %w", err)
 	}
 
-	// gRPC server with the RateGateService + health.
-	grpcSrv := grpc.NewServer()
+	// gRPC server with the RateGateService + health, plus the admin service
+	// (Phase 2) for runtime policy CRUD alongside the check API. Keepalive
+	// enforcement guards against misbehaving clients that ping too aggressively;
+	// the server parameters tell clients to ping every 30s and declare the
+	// connection dead after 10s without a pong (so stale connections are
+	// reaped without waiting for a TCP timeout).
+	grpcSrv := grpc.NewServer(
+		grpc.UnaryInterceptor(core.AuthUnaryInterceptor()),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             10 * time.Second, // reject pings more frequent than this
+			PermitWithoutStream: true,             // allow pings even when no RPC is active
+		}),
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    30 * time.Second, // suggest a ping after 30s idle
+			Timeout: 10 * time.Second, // wait 10s for a pong before closing
+		}),
+	)
 	grpcAdapter := server.NewGRPCServer(core)
 	grpcAdapter.RegisterServer(grpcSrv)
+	server.NewGRPCAdminServer(core).RegisterServer(grpcSrv)
 
 	// REST server (Gin) with the /metrics handler bound to our private registry.
 	metricsHandler := promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg})
@@ -166,10 +189,12 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 	switch cfg.Store.Backend {
 	case "memory":
 		return store.NewMemoryStore(store.MemoryOptions{
-			TBShards:      cfg.Store.MemoryShards,
-			SWShards:      cfg.Store.MemorySWShards,
-			SWGranularity: cfg.Store.MemorySWGran,
-			SWApproximate: cfg.Store.MemorySWApprox,
+			TBShards:          cfg.Store.MemoryShards,
+			SWShards:          cfg.Store.MemorySWShards,
+			SWGranularity:     cfg.Store.MemorySWGran,
+			SWApproximate:     cfg.Store.MemorySWApprox,
+			AdaptiveShards:    cfg.Store.MemoryAdaptiveShards,
+			AdaptiveMaxFactor: cfg.Store.MemoryAdaptiveMaxFactor,
 		}), nil
 	case "redis":
 		return store.NewRedisStore(store.RedisOptions{
@@ -179,6 +204,15 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 			PoolSize:  cfg.Redis.PoolSize,
 			KeyPrefix: cfg.Redis.Prefix,
 		}), nil
+	case "redis-cluster":
+		return store.NewClusterStore(store.ClusterOptions{
+			Addrs:         cfg.Cluster.Addrs,
+			Password:      cfg.Cluster.Password,
+			PoolSize:      cfg.Cluster.PoolSize,
+			RouteRandomly: cfg.Cluster.RouteRandomly,
+			MaxRedirects:  cfg.Cluster.MaxRedirects,
+			KeyPrefix:     cfg.Cluster.Prefix,
+		}), nil
 	default:
 		return nil, fmt.Errorf("unknown store backend %q", cfg.Store.Backend)
 	}
@@ -187,15 +221,17 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 // redactedSnapshot returns a map of non-sensitive config fields for logging.
 func redactedSnapshot(cfg *config.Config) map[string]any {
 	return map[string]any{
-		"store_backend":     cfg.Store.Backend,
-		"default_algorithm": cfg.Store.DefaultAlgorithm,
-		"grpc_port":         cfg.Server.GRPCPort,
-		"rest_port":         cfg.Server.RESTPort,
-		"redis_addr":        cfg.Redis.Addr,
-		"policies":          len(cfg.Policies),
-		"metrics_enabled":   cfg.Observability.MetricsEnabled,
-		"tracing_enabled":   cfg.Observability.TracingEnabled,
-		"auth_enabled":      cfg.Server.APIKey != "",
+		"store_backend":      cfg.Store.Backend,
+		"default_algorithm":  cfg.Store.DefaultAlgorithm,
+		"fail_open":          cfg.Store.FailOpen,
+		"grpc_port":          cfg.Server.GRPCPort,
+		"rest_port":          cfg.Server.RESTPort,
+		"redis_addr":         cfg.Redis.Addr,
+		"policies":           len(cfg.Policies),
+		"metrics_enabled":    cfg.Observability.MetricsEnabled,
+		"tracing_enabled":    cfg.Observability.TracingEnabled,
+		"auth_enabled":       cfg.Server.APIKey != "",
+		"admin_auth_enabled": cfg.Server.AdminAPIKey != "",
 	}
 }
 

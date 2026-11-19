@@ -47,7 +47,7 @@ func TestHTTPServer_CheckAllowed(t *testing.T) {
 	engine := rest.Engine()
 
 	body := `{"key":"u1","algorithm":"tokenbucket","limit":3,"refill_per_second":1}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -77,7 +77,7 @@ func TestHTTPServer_CheckDenied429(t *testing.T) {
 	// Policy "strict" allows 2 then denies.
 	for i := 0; i < 2; i++ {
 		body := `{"key":"d","limit_name":"strict"}`
-		req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+		req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		engine.ServeHTTP(w, req)
@@ -87,7 +87,7 @@ func TestHTTPServer_CheckDenied429(t *testing.T) {
 	}
 	// 3rd denied.
 	body := `{"key":"d","limit_name":"strict"}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -105,7 +105,7 @@ func TestHTTPServer_CheckBadKey(t *testing.T) {
 
 	// Missing key -> 400.
 	body := `{"algorithm":"tokenbucket","limit":1,"refill_per_second":1}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -119,7 +119,7 @@ func TestHTTPServer_CheckUnknownPolicy(t *testing.T) {
 	engine := rest.Engine()
 
 	body := `{"key":"k","limit_name":"does-not-exist"}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -132,14 +132,14 @@ func TestHTTPServer_HealthzReady(t *testing.T) {
 	_, rest := newTestServer(t)
 	engine := rest.Engine()
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("healthz status=%d want 200", w.Code)
 	}
 
-	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", http.NoBody)
+	req = httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w = httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -152,7 +152,7 @@ func TestHTTPServer_ReadyNotServingWhenUnready(t *testing.T) {
 	engine := rest.Engine()
 
 	core.MarkNotReady()
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/readyz", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 	if w.Code != http.StatusServiceUnavailable {
@@ -166,13 +166,13 @@ func TestHTTPServer_Metrics(t *testing.T) {
 
 	// Make a check so the counters are non-zero.
 	body := `{"key":"m","algorithm":"tokenbucket","limit":1,"refill_per_second":1}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 
 	// Scrape metrics.
-	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody)
+	req = httptest.NewRequest(http.MethodGet, "/metrics", nil)
 	w = httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
@@ -189,7 +189,7 @@ func TestHTTPServer_AuthMiddlewareRejects(t *testing.T) {
 	engine := rest.Engine()
 
 	body := `{"key":"a","algorithm":"tokenbucket","limit":1,"refill_per_second":1}`
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req := httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
@@ -198,7 +198,7 @@ func TestHTTPServer_AuthMiddlewareRejects(t *testing.T) {
 	}
 
 	// With correct key it passes.
-	req = httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/check", bytes.NewBufferString(body))
+	req = httptest.NewRequest(http.MethodPost, "/v1/check", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", "secret")
 	w = httptest.NewRecorder()

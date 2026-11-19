@@ -48,6 +48,7 @@ type Config struct {
 	Server        ServerConfig        `mapstructure:"server"`
 	Store         StoreConfig         `mapstructure:"store"`
 	Redis         RedisConfig         `mapstructure:"redis"`
+	Cluster       RedisClusterConfig  `mapstructure:"cluster"`
 	Policies      []PolicyConfig      `mapstructure:"policies"`
 	Observability ObservabilityConfig `mapstructure:"observability"`
 	Log           LogConfig           `mapstructure:"log"`
@@ -65,6 +66,14 @@ type ServerConfig struct {
 	// auth — suitable only for trusted sidecar deployments.
 	APIKey string `mapstructure:"api_key"`
 
+	// AdminAPIKey, if non-empty, is the credential required by the admin
+	// endpoints (/v1/admin/* REST, rategate.v1.AdminService gRPC). When empty,
+	// admin endpoints fall back to APIKey so a deployment that only sets
+	// server.api_key keeps its Phase 2 behavior. Setting a distinct admin key
+	// is strongly recommended in production: check clients and policy
+	// operators then hold separate, least-privilege credentials.
+	AdminAPIKey string `mapstructure:"admin_api_key"`
+
 	// ReadTimeout / WriteTimeout bound the REST handlers.
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
@@ -72,10 +81,11 @@ type ServerConfig struct {
 
 // StoreConfig selects the persistence backend.
 type StoreConfig struct {
-	// Backend is "memory" or "redis".
+	// Backend is "memory", "redis", or "redis-cluster".
 	Backend string `mapstructure:"backend"`
 
 	// DefaultAlgorithm is applied when a Check request omits it.
+	// One of "tokenbucket", "slidingwindow", "adaptive".
 	DefaultAlgorithm string `mapstructure:"default_algorithm"`
 
 	// Memory options (only used when Backend == "memory").
@@ -83,6 +93,20 @@ type StoreConfig struct {
 	MemorySWShards int  `mapstructure:"memory_sw_shards"`
 	MemorySWGran   int  `mapstructure:"memory_sw_granularity"`
 	MemorySWApprox bool `mapstructure:"memory_sw_approximate"`
+
+	// Adaptive options (used when an "adaptive" policy is evaluated against
+	// the memory backend).
+	MemoryAdaptiveShards    int     `mapstructure:"memory_adaptive_shards"`
+	MemoryAdaptiveMaxFactor float64 `mapstructure:"memory_adaptive_max_factor"`
+
+	// FailOpen controls the Check behavior when the backing store returns an
+	// error (e.g. Redis unreachable). The default (false) is fail-closed: the
+	// check surfaces the error and the request is not admitted (the limiter is
+	// treated as broken, not as silently denying). Setting fail_open=true makes
+	// the server admit the request instead, so a limiter outage does not take
+	// down the protected service — a tradeoff of safety for availability that
+	// each deployment must make deliberately.
+	FailOpen bool `mapstructure:"fail_open"`
 }
 
 // RedisConfig holds the Redis connection parameters.
@@ -94,6 +118,34 @@ type RedisConfig struct {
 	Prefix   string `mapstructure:"prefix"`
 }
 
+// RedisClusterConfig holds Redis Cluster connection parameters. It is used
+// only when store.backend == "redis-cluster". At least one seed Addr is
+// required; the go-redis ClusterClient discovers the remaining nodes via
+// CLUSTER SLOTS. See ADR-0003 for the single-key-Lua rationale that lets the
+// cluster backend reuse the RedisStore scripts unchanged.
+type RedisClusterConfig struct {
+	// Addrs is the seed list of cluster nodes (host:port). Required for the
+	// redis-cluster backend.
+	Addrs []string `mapstructure:"addrs"`
+
+	// Password for AUTH, applied to every node in the cluster.
+	Password string `mapstructure:"password"`
+
+	// PoolSize is the per-node connection pool size. Zero falls back to
+	// 10 * runtime.GOMAXPROCS.
+	PoolSize int `mapstructure:"pool_size"`
+
+	// RouteRandomly spreads commands across masters and replicas. See
+	// store.ClusterOptions.RouteRandomly for the rate-limiting tradeoff.
+	RouteRandomly bool `mapstructure:"route_randomly"`
+
+	// MaxRedirects bounds MOVED/ASK retries. Defaults to 3.
+	MaxRedirects int `mapstructure:"max_redirects"`
+
+	// Prefix namespaces all keys. Defaults to "rategate".
+	Prefix string `mapstructure:"prefix"`
+}
+
 // PolicyConfig is a named, pre-loaded limit policy that clients can reference
 // by name in a Check request instead of supplying the limit inline.
 type PolicyConfig struct {
@@ -102,6 +154,37 @@ type PolicyConfig struct {
 	Limit           int64         `mapstructure:"limit"`
 	RefillPerSecond float64       `mapstructure:"refill_per_second"`
 	Window          time.Duration `mapstructure:"window"`
+}
+
+// Validate checks a single policy for internal consistency: a non-empty name,
+// a positive limit, and the algorithm-specific field (refill for tokenbucket,
+// window for slidingwindow / adaptive). It is used by [Config.Validate] at
+// startup and by the admin Registry on Create/Update so that runtime-created
+// policies are held to the same rules as file-loaded ones.
+func (p PolicyConfig) Validate() error {
+	if p.Name == "" {
+		return fmt.Errorf("policy: name is required")
+	}
+	if p.Limit <= 0 {
+		return fmt.Errorf("policy %q: limit must be > 0", p.Name)
+	}
+	switch p.Algorithm {
+	case "tokenbucket":
+		if p.RefillPerSecond <= 0 {
+			return fmt.Errorf("policy %q: refill_per_second must be > 0 for tokenbucket", p.Name)
+		}
+	case "slidingwindow":
+		if p.Window <= 0 {
+			return fmt.Errorf("policy %q: window must be > 0 for slidingwindow", p.Name)
+		}
+	case "adaptive":
+		if p.Window <= 0 {
+			return fmt.Errorf("policy %q: window must be > 0 for adaptive", p.Name)
+		}
+	default:
+		return fmt.Errorf("policy %q: unknown algorithm %q", p.Name, p.Algorithm)
+	}
+	return nil
 }
 
 // ObservabilityConfig toggles metrics/tracing.
@@ -129,21 +212,35 @@ func New() *viper.Viper {
 	v.SetDefault("server.rest_host", DefaultRESTHost)
 	v.SetDefault("server.rest_port", DefaultRESTPort)
 	v.SetDefault("server.api_key", DefaultAPIKey)
+	v.SetDefault("server.admin_api_key", "") // empty => admin falls back to server.api_key
 	v.SetDefault("server.read_timeout", 5*time.Second)
 	v.SetDefault("server.write_timeout", 5*time.Second)
 
 	v.SetDefault("store.backend", DefaultStoreBackend)
 	v.SetDefault("store.default_algorithm", DefaultAlgorithm)
+	v.SetDefault("store.fail_open", false) // fail-closed by default
 	v.SetDefault("store.memory_shards", 256)
 	v.SetDefault("store.memory_sw_shards", 256)
 	v.SetDefault("store.memory_sw_granularity", 60)
 	v.SetDefault("store.memory_sw_approximate", false)
+	v.SetDefault("store.memory_adaptive_shards", 256)
+	v.SetDefault("store.memory_adaptive_max_factor", 4.0)
 
 	v.SetDefault("redis.addr", DefaultRedisAddr)
 	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", DefaultRedisDB)
 	v.SetDefault("redis.pool_size", DefaultRedisPoolSize)
 	v.SetDefault("redis.prefix", DefaultRedisPrefix)
+
+	// Redis Cluster defaults (used only when store.backend == "redis-cluster").
+	// addrs defaults to empty so Validate can surface a clear error if the
+	// cluster backend is selected without any seed nodes configured.
+	v.SetDefault("cluster.addrs", []string{})
+	v.SetDefault("cluster.password", "")
+	v.SetDefault("cluster.pool_size", DefaultRedisPoolSize)
+	v.SetDefault("cluster.route_randomly", false)
+	v.SetDefault("cluster.max_redirects", 3)
+	v.SetDefault("cluster.prefix", DefaultRedisPrefix)
 
 	v.SetDefault("observability.metrics_enabled", DefaultMetricsEnabled)
 	v.SetDefault("observability.tracing_enabled", DefaultTracingEnabled)
@@ -192,14 +289,17 @@ func Load(v *viper.Viper) (*Config, error) {
 // Validate checks the resolved config for internal consistency.
 func (c *Config) Validate() error {
 	switch c.Store.Backend {
-	case "memory", "redis":
+	case "memory", "redis", "redis-cluster":
 	default:
-		return fmt.Errorf("invalid store.backend %q: want memory|redis", c.Store.Backend)
+		return fmt.Errorf("invalid store.backend %q: want memory|redis|redis-cluster", c.Store.Backend)
+	}
+	if c.Store.Backend == "redis-cluster" && len(c.Cluster.Addrs) == 0 {
+		return fmt.Errorf("cluster.addrs is required when store.backend=redis-cluster")
 	}
 	switch c.Store.DefaultAlgorithm {
-	case "tokenbucket", "slidingwindow":
+	case "tokenbucket", "slidingwindow", "adaptive":
 	default:
-		return fmt.Errorf("invalid store.default_algorithm %q: want tokenbucket|slidingwindow", c.Store.DefaultAlgorithm)
+		return fmt.Errorf("invalid store.default_algorithm %q: want tokenbucket|slidingwindow|adaptive", c.Store.DefaultAlgorithm)
 	}
 	if c.Server.GRPCPort < 0 || c.Server.GRPCPort > 65535 {
 		return fmt.Errorf("invalid server.grpc_port %d", c.Server.GRPCPort)
@@ -208,23 +308,8 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("invalid server.rest_port %d", c.Server.RESTPort)
 	}
 	for i, p := range c.Policies {
-		if p.Name == "" {
-			return fmt.Errorf("policies[%d]: name is required", i)
-		}
-		if p.Limit <= 0 {
-			return fmt.Errorf("policies[%d] %s: limit must be > 0", i, p.Name)
-		}
-		switch p.Algorithm {
-		case "tokenbucket":
-			if p.RefillPerSecond <= 0 {
-				return fmt.Errorf("policies[%d] %s: refill_per_second must be > 0 for tokenbucket", i, p.Name)
-			}
-		case "slidingwindow":
-			if p.Window <= 0 {
-				return fmt.Errorf("policies[%d] %s: window must be > 0 for slidingwindow", i, p.Name)
-			}
-		default:
-			return fmt.Errorf("policies[%d] %s: unknown algorithm %q", i, p.Name, p.Algorithm)
+		if err := p.Validate(); err != nil {
+			return fmt.Errorf("policies[%d]: %w", i, err)
 		}
 	}
 	return nil

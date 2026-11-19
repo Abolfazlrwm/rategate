@@ -57,3 +57,64 @@ message HealthCheckResponse {
   }
   ServingStatus status = 1;
 }
+
+// AdminService manages rate-limit policies at runtime (Phase 2). Mutations are
+// applied to the same thread-safe Registry the CheckRateLimit path reads, so a
+// created or updated policy is immediately visible to subsequent
+// CheckRateLimit calls without a restart. Mirrors the REST
+// /v1/admin/policies API; both transports share one Registry.
+service AdminService {
+  // ListPolicies returns every registered policy, sorted by name.
+  rpc ListPolicies(ListPoliciesRequest) returns (ListPoliciesResponse);
+
+  // CreatePolicy adds a new policy. Returns ALREADY_EXISTS if the name is
+  // taken, INVALID_ARGUMENT if the policy fails validation.
+  rpc CreatePolicy(CreatePolicyRequest) returns (Policy);
+
+  // GetPolicy fetches one policy by name. Returns NOT_FOUND if missing.
+  rpc GetPolicy(GetPolicyRequest) returns (Policy);
+
+  // UpdatePolicy overwrites an existing policy. The name in the request must
+  // match policy.name (no rename via Update). Returns NOT_FOUND if the named
+  // policy does not exist.
+  rpc UpdatePolicy(UpdatePolicyRequest) returns (Policy);
+
+  // DeletePolicy removes a policy. Returns NOT_FOUND if missing. A deleted
+  // policy is immediately unknown to CheckRateLimit.
+  rpc DeletePolicy(DeletePolicyRequest) returns (DeletePolicyResponse);
+}
+
+// Policy is the canonical representation of a named limit policy, shared by
+// the Create/Get/Update responses.
+message Policy {
+  string name = 1;
+  string algorithm = 2;          // "tokenbucket" | "slidingwindow" | "adaptive"
+  int64  limit = 3;              // floor (adaptive) / burst (tokenbucket) / window count (slidingwindow)
+  double refill_per_second = 4;  // token bucket only
+  int64  window_ms = 5;          // sliding window / adaptive only
+}
+
+message ListPoliciesRequest {}
+
+message ListPoliciesResponse {
+  repeated Policy policies = 1;
+}
+
+message CreatePolicyRequest {
+  Policy policy = 1;             // required; policy.name must be non-empty and unique
+}
+
+message GetPolicyRequest {
+  string name = 1;               // required
+}
+
+message UpdatePolicyRequest {
+  string name = 1;               // identifies the policy to update; must equal policy.name
+  Policy policy = 2;             // required
+}
+
+message DeletePolicyRequest {
+  string name = 1;               // required
+}
+
+message DeletePolicyResponse {}

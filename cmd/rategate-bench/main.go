@@ -104,7 +104,7 @@ func run(target, path string, duration time.Duration, concurrency, rps, keys int
 					return
 				}
 
-				key := fmt.Sprintf("bench:%d", rand.Intn(keys)) //nolint:gosec // benchmark key distribution only -- no security property depends on this randomness
+				key := fmt.Sprintf("bench:%d", rand.Intn(keys)) //nolint:gosec // G404: math/rand is intentional for synthetic load-test traffic shaping.
 				body, _ := json.Marshal(map[string]any{
 					"key":               key,
 					"algorithm":         "tokenbucket",

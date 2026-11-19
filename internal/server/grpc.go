@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	pb "github.com/Abolfazlrwm/rategate/api/proto"
@@ -38,11 +39,14 @@ func NewGRPCServer(core *Server) *GRPCServer {
 // caller can register it alongside the RateGateService.
 func (g *GRPCServer) HealthServer() *health.Server { return g.healthSrv }
 
-// RegisterServer registers RateGateService and the health service on the
-// gRPC server.
+// RegisterServer registers RateGateService, the health service, and the gRPC
+// reflection service on the gRPC server. Reflection is registered here (on the
+// primary adapter) so every RateGate gRPC server is discoverable by grpcurl and
+// friends without extra wiring in main.
 func (g *GRPCServer) RegisterServer(s *grpc.Server) {
 	pb.RegisterRateGateServiceServer(s, g)
 	healthpb.RegisterHealthServer(s, g.healthSrv)
+	reflection.Register(s)
 }
 
 // CheckRateLimit implements pb.RateGateServiceServer.

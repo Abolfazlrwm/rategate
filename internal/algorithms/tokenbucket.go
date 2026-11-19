@@ -87,13 +87,13 @@ func (t *TokenBucket) Check(key string, policy Policy, now time.Time) (Decision,
 		b.lastFill = now
 	}
 
-	// On denial lastFill deliberately stays where it is: the partial
-	// refill already happened above and the caller should wait until a
-	// full token is available.
 	allowed := b.tokens >= 1.0
 	if allowed {
 		b.tokens -= 1.0
 	}
+	// When denied, do not move lastFill forward; the partial refill above
+	// already happened and the caller should wait until a full token is
+	// available.
 
 	remaining := int64(b.tokens)
 	// ResetAt: when the bucket would be full again from the current state.
@@ -123,7 +123,7 @@ func (t *TokenBucket) Check(key string, policy Policy, now time.Time) (Decision,
 func (t *TokenBucket) shardFor(key string) *tbShard {
 	h := fnv.New32a()
 	_, _ = h.Write([]byte(key))
-	return t.shards[h.Sum32()%uint32(len(t.shards))] //nolint:gosec // shard count is a small slice sized once in NewTokenBucket; len cannot exceed uint32
+	return t.shards[h.Sum32()%uint32(len(t.shards))]
 }
 
 // Reset clears all bucket state. Useful in tests; not exposed in the public

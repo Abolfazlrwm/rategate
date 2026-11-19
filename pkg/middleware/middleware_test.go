@@ -36,7 +36,7 @@ func TestStdlibMiddleware_Allow(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	if !called {
@@ -55,7 +55,7 @@ func TestStdlibMiddleware_Deny(t *testing.T) {
 			called = true
 		}))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	if called {
@@ -78,7 +78,7 @@ func TestStdlibMiddleware_FailOpenOnError(t *testing.T) {
 			w.WriteHeader(http.StatusOK)
 		}))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	if !called {
@@ -99,7 +99,7 @@ func TestStdlibMiddleware_FailClosedOnError(t *testing.T) {
 		called = true
 	}))
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/", http.NoBody)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, req)
 	if called {
@@ -132,7 +132,7 @@ func TestRetrySeconds(t *testing.T) {
 }
 
 func TestBuildRequest(t *testing.T) {
-	req := buildRequest("mykey", &Options{
+	req := buildRequest("mykey", Options{
 		PolicyName: "strict",
 		Algorithm:  "tokenbucket",
 		Limit:      10,

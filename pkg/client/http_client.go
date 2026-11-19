@@ -131,7 +131,7 @@ func (c *HTTPClient) Check(ctx context.Context, req CheckRequest) (*CheckRespons
 
 // Health pings the /healthz endpoint and returns nil if healthy.
 func (c *HTTPClient) Health(ctx context.Context) error {
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/healthz", http.NoBody)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/healthz", nil)
 	if err != nil {
 		return err
 	}

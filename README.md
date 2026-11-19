@@ -7,7 +7,7 @@
   <a href="https://goreportcard.com/report/github.com/Abolfazlrwm/rategate"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/Abolfazlrwm/rategate"></a>
   <a href="https://pkg.go.dev/github.com/Abolfazlrwm/rategate"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/Abolfazlrwm/rategate.svg"></a>
   <img alt="License" src="https://img.shields.io/github/license/Abolfazlrwm/rategate?color=blue">
-  <img alt="Go Version" src="https://img.shields.io/badge/Go-1.23+-00ADD8?logo=go&logoColor=white">
+  <img alt="Go Version" src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white">
   <a href="https://github.com/Abolfazlrwm/rategate/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Abolfazlrwm/rategate?style=social"></a>
 </p>
 
@@ -15,8 +15,10 @@
 
 RateGate is a production-grade, distributed rate-limiter service written in
 Go. It runs as a sidecar or gateway middleware, exposes a gRPC service and a
-REST API, and supports token-bucket and sliding-window algorithms backed by
-either an in-process memory store or Redis (atomic Lua scripts).
+REST API, and supports token-bucket, sliding-window, and adaptive (AIMD)
+algorithms backed by an in-process memory store, single-node Redis, or Redis
+Cluster (all atomic via Lua scripts). Policies are managed at runtime through
+a thread-safe admin REST API — no restart needed to add or change a limit.
 
 > **Headline:** 120k+ RPS on a single laptop with p99 < 5ms (in-memory token
 > bucket). See [docs/benchmarks.md](docs/benchmarks.md) for methodology and
@@ -46,15 +48,15 @@ correct, fast option you can run yourself:
 ## Benchmark snapshot
 
 Algorithm micro-benchmarks (`go test -bench=. ./internal/algorithms/`), 2 vCPU
-sandbox, Go 1.23.4. Full table + reproduction in [docs/benchmarks.md](docs/benchmarks.md).
+sandbox, Go 1.26.0. Full table + reproduction in [docs/benchmarks.md](docs/benchmarks.md).
 
 | Benchmark | ns/op | allocs/op | RPS/core |
 | --- | ---: | ---: | ---: |
 | TokenBucket (single key, contended) | 40 | 0 | ~25M |
-| TokenBucket (parallel) | 54 | 0 | ~18M |
-| SlidingWindow (parallel, exact) | 175 | 0 | ~5.7M |
-| SlidingWindow (parallel, approximate) | 61 | 0 | ~16M |
-| **REST end-to-end** (`BenchmarkHTTPServer_CheckParallel`) | **10,370** | 48 | **~96k (2 vCPU)** |
+| TokenBucket (parallel) | 60 | 0 | ~17M |
+| SlidingWindow (parallel, exact) | 176 | 0 | ~5.7M |
+| SlidingWindow (parallel, approximate) | 67 | 0 | ~15M |
+| **REST end-to-end** (`BenchmarkHTTPServer_CheckParallel`) | **11,546** | 48 | **~87k** |
 
 On an 8-core laptop the REST path scales to **120k+ RPS** with **p99 < 5ms**
 for the in-memory token bucket. Redis-backed numbers are network-bound; on
@@ -125,17 +127,17 @@ server, and the client SDK in action.
 
 ## Features
 
-| | v0.1.0 (this release) | Phase 2 |
-| --- | --- | --- |
-| Algorithms | token bucket, sliding window (exact + approximate) | adaptive w/ latency feedback |
-| Stores | in-memory (sharded mutex), Redis (atomic Lua) | Redis Cluster / Sentinel |
-| Transports | gRPC, REST (Gin) | gRPC streaming |
-| Middleware | Gin, stdlib `net/http` | Echo, Fiber |
-| Client SDK | Go (HTTP + gRPC) | Python |
-| Observability | Prometheus, OpenTelemetry, slog | — |
-| Auth | API key (header) | per-tenant quotas |
-| Deployment | Docker (distroless), K8s manifests | WASM Envoy filter, HCL policies |
-| Policy config | YAML + env | runtime Admin API |
+| | v0.1.0 | v0.2.0 (Phase 2) | Phase 3 |
+| --- | --- | --- | --- |
+| Algorithms | token bucket, sliding window (exact + approximate) | adaptive (AIMD, demand-aware) | congestion-response adaptive |
+| Stores | in-memory (sharded mutex), Redis (atomic Lua) | Redis Cluster (single-key Lua reuse) | — |
+| Transports | gRPC, REST (Gin) | admin REST (policy CRUD) | gRPC streaming |
+| Middleware | Gin, stdlib `net/http` | — | Echo, Fiber |
+| Client SDK | Go (HTTP + gRPC) | — | Python |
+| Observability | Prometheus, OpenTelemetry, slog | — | — |
+| Auth | API key (header) | — | per-tenant quotas |
+| Deployment | Docker (distroless), K8s manifests | — | WASM Envoy filter, HCL policies |
+| Policy config | YAML + env | runtime admin REST API | HCL policies |
 
 ## Repository layout
 
@@ -145,8 +147,9 @@ rategate/
 │   ├── rategate-server/     # gRPC + REST server binary
 │   └── rategate-bench/      # load-testing tool
 ├── internal/
-│   ├── algorithms/          # token bucket + sliding window (100% coverage)
-│   ├── store/               # memory + redis (Lua scripts, 100% coverage)
+│   ├── algorithms/          # token bucket + sliding window + adaptive (100% coverage)
+│   ├── store/               # memory + redis + redis-cluster (Lua scripts, 100% coverage)
+│   ├── admin/               # thread-safe runtime policy registry
 │   ├── server/              # gRPC + REST adapters, middleware, core
 │   ├── config/              # viper-based config
 │   ├── observability/       # Prometheus metrics, OTel tracing, slog
@@ -173,8 +176,8 @@ make test-cover    # coverage report; algorithms + store must be 100%
 make proto     # regenerate gRPC code from api/proto/rategate.proto
 ```
 
-Requirements: Go 1.23+, `protoc` + `protoc-gen-go` + `protoc-gen-go-grpc`
-(only if you change the `.proto`), `golangci-lint` (the Makefile installs it
+Requirements: Go 1.26+, `protoc` + `protoc-gen-go` + `protoc-gen-go-grpc`
+(only if you change the `.proto`), `golangci-lint` v2 (the Makefile installs it
 if missing).
 
 ## Non-negotiable standards
@@ -192,16 +195,14 @@ These are enforced in CI and a PR cannot merge without them. See
 
 | Version | Scope |
 | --- | --- |
-| **v0.1.0** | token bucket + in-memory + gRPC + REST *(this release)* |
-| v0.2.0 | Redis-backed + sliding window |
-| v0.3.0 | client SDKs (Go + Python) |
-| v0.4.0 | middleware (Gin, Echo, Fiber) |
+| **v0.1.0** | token bucket + sliding window + in-memory/Redis + gRPC/REST + SDK + middleware *(released 2025-11-12)* |
+| **v0.2.0** | Redis Cluster backend + adaptive (AIMD) limiter + admin REST API + Go 1.26 *(this branch)* |
+| v0.3.0 | per-tenant quotas, gRPC streaming, congestion-response adaptive |
 | v1.0.0 | production-ready with SLAs |
 
-> **Note:** this repository's `main` branch currently contains the full v0.1.0
-> surface (algorithms, stores, both transports, SDK, middleware, deployments)
-> so reviewers can evaluate the complete foundation in one pass. The version
-> tags above track which features are *blessed as stable* at each release.
+> **Note:** the `main` branch contains the full v0.1.0 surface; the
+> `feat/phase-2` branch adds the v0.2.0 surface on top. The version tags track
+> which features are *blessed as stable* at each release.
 
 ## Docker image
 
@@ -219,6 +220,8 @@ docker run --rm -p 8080:8080 -p 9090:9090 \
 - [API reference](docs/api-reference.md)
 - [ADR-0001: why token bucket is the default](docs/adr/0001-why-token-bucket-default.md)
 - [ADR-0002: Redis Lua scripts for atomicity](docs/adr/0002-redis-lua-scripts.md)
+- [ADR-0003: Redis Cluster via single-key Lua reuse](docs/adr/0003-redis-cluster-single-key-lua.md)
+- [ADR-0004: adaptive (AIMD) limiter — demand-aware, not congestion-response](docs/adr/0004-adaptive-aimd-limiter.md)
 - [Examples](examples/)
 
 ## License

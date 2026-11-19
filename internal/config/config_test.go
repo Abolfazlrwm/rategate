@@ -155,5 +155,36 @@ func TestConfig_EnvKeyReplacer(t *testing.T) {
 	}
 }
 
+// TestConfig_ExampleFileLoadsAndValidates is a regression guard: the shipped
+// config.example.yaml must parse and pass Validate, and must exercise the
+// Phase 2 additions (an adaptive policy and a seeded cluster section) so a
+// future edit that breaks the example is caught here.
+func TestConfig_ExampleFileLoadsAndValidates(t *testing.T) {
+	v := New()
+	v.SetConfigFile("../../config.example.yaml")
+	cfg, err := Load(v)
+	if err != nil {
+		t.Fatalf("example config failed to load/validate: %v", err)
+	}
+	if cfg.Store.Backend != "memory" {
+		t.Fatalf("example backend=%q want memory", cfg.Store.Backend)
+	}
+	foundAdaptive := false
+	for _, p := range cfg.Policies {
+		if p.Algorithm == "adaptive" {
+			foundAdaptive = true
+		}
+	}
+	if !foundAdaptive {
+		t.Fatal("example config should include an adaptive policy")
+	}
+	if len(cfg.Cluster.Addrs) == 0 {
+		t.Fatal("example config should seed cluster.addrs")
+	}
+	if cfg.Store.MemoryAdaptiveMaxFactor != 4.0 {
+		t.Fatalf("adaptive max factor=%v want 4.0", cfg.Store.MemoryAdaptiveMaxFactor)
+	}
+}
+
 // Ensure viper is imported even if only used transitively.
 var _ = viper.New

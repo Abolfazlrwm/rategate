@@ -8,23 +8,51 @@ server:
   grpc_port: 9090
   rest_host: "0.0.0.0"
   rest_port: 8080
-  # api_key: "change-me"   # uncomment to require x-api-key auth
+  # api_key: "change-me"        # uncomment to require x-api-key on /v1/check
+  #                             # and gRPC CheckRateLimit. Empty disables auth.
+  # admin_api_key: "admin-me"   # separate credential for /v1/admin/* and the
+  #                             # gRPC AdminService. Empty falls back to api_key
+  #                             # (so a deployment with only api_key keeps its
+  #                             # Phase 2 behavior). A distinct admin key is
+  #                             # strongly recommended in production.
   read_timeout: 5s
   write_timeout: 5s
 
 store:
-  backend: memory          # memory | redis
-  default_algorithm: tokenbucket
+  backend: memory          # memory | redis | redis-cluster
+  default_algorithm: tokenbucket   # tokenbucket | slidingwindow | adaptive
+  # In-memory algorithm tuning (only used when backend == memory).
   memory_shards: 256
   memory_sw_shards: 256
   memory_sw_granularity: 60
   memory_sw_approximate: false
+  # Adaptive limiter tuning (only used by "adaptive" policies).
+  memory_adaptive_shards: 256
+  memory_adaptive_max_factor: 4.0   # effective limit in [floor, floor*max_factor]
+  # fail_open: false               # admit a request when the store errors
+  #                               # (e.g. Redis down) instead of failing closed.
+  #                               # Default false (deny) is the safer choice;
+  #                               # true trades safety for availability.
 
 redis:
   addr: "localhost:6379"
   # password: ""
   db: 0
   pool_size: 0             # 0 => GOMAXPROCS * 10
+  prefix: "rategate"
+
+# Redis Cluster backend (used only when store.backend == "redis-cluster").
+# At least one seed addr is required; the client discovers the rest via
+# CLUSTER SLOTS. See docs/adr/0003-redis-cluster-single-key-lua.md.
+cluster:
+  addrs:
+    - "localhost:7000"
+    - "localhost:7001"
+    - "localhost:7002"
+  # password: ""
+  pool_size: 0             # per-node; 0 => GOMAXPROCS * 10
+  route_randomly: false   # spread reads to replicas; see ADR-0003 tradeoff
+  max_redirects: 3        # MOVED/ASK retries
   prefix: "rategate"
 
 policies:
@@ -40,6 +68,21 @@ policies:
     algorithm: slidingwindow
     limit: 3
     window: 60s
+  # Adaptive (AIMD) policy: floor=limit, effective limit adapts in
+  # [floor, floor*max_factor] to demand. In-memory only. See ADR-0004.
+  - name: "adaptive-burst"
+    algorithm: adaptive
+    limit: 200             # steady-state floor
+    window: 10s            # AIMD sampling window
+
+# Runtime policy management (Phase 2): policies can also be created, updated,
+# and deleted at runtime via the REST admin API without restarting:
+#   POST   /v1/admin/policies
+#   GET    /v1/admin/policies
+#   GET    /v1/admin/policies/:name
+#   PUT    /v1/admin/policies/:name
+#   DELETE /v1/admin/policies/:name
+# Runtime changes are NOT persisted back to this file; reload to reseed.
 
 observability:
   metrics_enabled: true
