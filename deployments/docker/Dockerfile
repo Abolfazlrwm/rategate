@@ -5,7 +5,7 @@
 # Stage 1: build on a full Go image with build-args for version stamping.
 # Stage 2: runtime on a distroless static image (~2MB, no shell, no libc).
 
-ARG GO_VERSION=1.23
+ARG GO_VERSION=1.26
 ARG BASE_DISTRO=gcr.io/distroless/static-debian12:nonroot
 
 FROM golang:${GO_VERSION}-bookworm AS builder
@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 # Build args for version stamping (injected via -ldflags).
-ARG VERSION=v0.1.0
+ARG VERSION=v0.2.1
 ARG COMMIT=unknown
 ARG BUILD_DATE
 

@@ -26,7 +26,7 @@ services:
     build:
       context: ../..
       dockerfile: deployments/docker/Dockerfile
-    image: rategate:v0.1.0
+    image: rategate:v0.2.1
     depends_on:
       redis:
         condition: service_healthy

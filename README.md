@@ -9,6 +9,7 @@
   <img alt="License" src="https://img.shields.io/github/license/Abolfazlrwm/rategate?color=blue">
   <img alt="Go Version" src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white">
   <a href="https://github.com/Abolfazlrwm/rategate/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Abolfazlrwm/rategate?style=social"></a>
+  <a href="https://abolfazlrwm.github.io/rategate/"><img alt="Live Demo" src="https://img.shields.io/badge/%E2%96%B6-live_demo-22d3ee"></a>
 </p>
 
 ---
@@ -19,6 +20,11 @@ REST API, and supports token-bucket, sliding-window, and adaptive (AIMD)
 algorithms backed by an in-process memory store, single-node Redis, or Redis
 Cluster (all atomic via Lua scripts). Policies are managed at runtime through
 a thread-safe admin REST API — no restart needed to add or change a limit.
+
+> ▶ **Try it live:** the [in-browser playground](https://abolfazlrwm.github.io/rategate/)
+> simulates the *exact* token-bucket and sliding-window algorithms the server
+> runs — tune a policy, hammer it with auto-fire, and watch each request
+> admitted or denied in real time. No backend, no signup.
 
 > **Headline:** 120k+ RPS on a single laptop with p99 < 5ms (in-memory token
 > bucket). See [docs/benchmarks.md](docs/benchmarks.md) for methodology and
@@ -44,6 +50,31 @@ correct, fast option you can run yourself:
 - **Hardened.** 100% test coverage on `internal/algorithms` and
   `internal/store` (enforced in CI), race detector green, `golangci-lint`
   strict, no unrecovered panics in request paths.
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  C[Client / Gin middleware] -->|REST /v1/check · gRPC CheckRateLimit| S[rategate-server]
+  S --> A{auth interceptor}
+  A -->|api_key| CK[Server.Check]
+  A -->|admin_api_key| ADM[Admin REST + gRPC<br/>policy CRUD]
+  ADM --> R[(Policy Registry<br/>thread-safe)]
+  CK --> R
+  CK --> ST{Store backend}
+  ST --> M[memory<br/>sharded mutex]
+  ST --> RD[(Redis<br/>atomic Lua EVAL)]
+  ST --> CL[(Redis Cluster<br/>single-key Lua reuse)]
+  S --> O[Prometheus /metrics<br/>OTel traces · slog]
+```
+
+A request enters over REST or gRPC, passes the per-method auth interceptor
+(`api_key` for `CheckRateLimit`, `admin_api_key` for the admin API), resolves
+its policy against the thread-safe registry, and runs atomically against the
+chosen store — in-memory sharded mutex, single-node Redis, or Redis Cluster,
+all via the same `Store.Check` contract. Every step is observed by Prometheus
+metrics, OpenTelemetry traces, and structured logs. Full design in
+[docs/architecture.md](docs/architecture.md).
 
 ## Benchmark snapshot
 
@@ -127,17 +158,22 @@ server, and the client SDK in action.
 
 ## Features
 
-| | v0.1.0 | v0.2.0 (Phase 2) | Phase 3 |
+| | v0.1.0 | v0.2.0 (Phase 2) | v0.2.1 (Phase 3 hardening) |
 | --- | --- | --- | --- |
-| Algorithms | token bucket, sliding window (exact + approximate) | adaptive (AIMD, demand-aware) | congestion-response adaptive |
+| Algorithms | token bucket, sliding window (exact + approximate) | adaptive (AIMD, demand-aware) | — |
 | Stores | in-memory (sharded mutex), Redis (atomic Lua) | Redis Cluster (single-key Lua reuse) | — |
-| Transports | gRPC, REST (Gin) | admin REST (policy CRUD) | gRPC streaming |
-| Middleware | Gin, stdlib `net/http` | — | Echo, Fiber |
-| Client SDK | Go (HTTP + gRPC) | — | Python |
-| Observability | Prometheus, OpenTelemetry, slog | — | — |
-| Auth | API key (header) | — | per-tenant quotas |
-| Deployment | Docker (distroless), K8s manifests | — | WASM Envoy filter, HCL policies |
-| Policy config | YAML + env | runtime admin REST API | HCL policies |
+| Transports | gRPC, REST (Gin) | admin REST + gRPC (policy CRUD) | gRPC reflection, keepalive enforcement |
+| Middleware | Gin, stdlib `net/http` | — | — |
+| Client SDK | Go (HTTP + gRPC) | — | — |
+| Observability | Prometheus, OpenTelemetry, slog | policy-count + admin-op metrics | — |
+| Auth | API key (header) | — | separate admin API key, per-method gRPC auth interceptor |
+| Resilience | — | — | configurable fail-open / fail-closed on store errors |
+| Deployment | Docker (distroless, non-root), K8s manifests | — | multi-arch GHCR image, `--version` flag |
+| Policy config | YAML + env | runtime admin REST + gRPC API | — |
+
+> **Planned for v0.3.0:** per-tenant quotas, gRPC streaming of live decisions,
+> congestion-response adaptive limiting, Echo/Fiber middleware, a Python SDK,
+> HCL policy config, and a WASM Envoy filter.
 
 ## Repository layout
 
@@ -196,25 +232,31 @@ These are enforced in CI and a PR cannot merge without them. See
 | Version | Scope |
 | --- | --- |
 | **v0.1.0** | token bucket + sliding window + in-memory/Redis + gRPC/REST + SDK + middleware *(released 2025-11-12)* |
-| **v0.2.0** | Redis Cluster backend + adaptive (AIMD) limiter + admin REST API + Go 1.26 *(this branch)* |
+| **v0.2.0** | Redis Cluster backend + adaptive (AIMD) limiter + admin REST + gRPC API + Go 1.26 |
+| **v0.2.1** | production hardening — fail-open, admin API key, gRPC auth/reflection/keepalive, admin metrics *(current `main`)* |
 | v0.3.0 | per-tenant quotas, gRPC streaming, congestion-response adaptive |
 | v1.0.0 | production-ready with SLAs |
 
-> **Note:** the `main` branch contains the full v0.1.0 surface; the
-> `feat/phase-2` branch adds the v0.2.0 surface on top. The version tags track
-> which features are *blessed as stable* at each release.
+> **Note:** `main` now contains the full v0.1.0 + v0.2.0 + v0.2.1 hardening
+> surface. Version tags track which features are *blessed as stable* at each
+> release; until a tag is cut, the default branch is the source of truth.
 
 ## Docker image
 
+A multi-arch (amd64 + arm64) distroless, non-root image is published to the
+GitHub Container Registry on every release tag (see
+[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)).
+
 ```bash
-docker pull ghcr.io/abolfazlrwm/rategate:v0.1.0
+docker pull ghcr.io/abolfazlrwm/rategate:latest
 docker run --rm -p 8080:8080 -p 9090:9090 \
   -e RATEGATE_STORE_BACKEND=memory \
-  ghcr.io/abolfazlrwm/rategate:v0.1.0
+  ghcr.io/abolfazlrwm/rategate:latest
 ```
 
 ## Documentation
 
+- **[Live demo](https://abolfazlrwm.github.io/rategate/)** — interactive in-browser rate-limiter playground
 - [Architecture](docs/architecture.md)
 - [Benchmarks](docs/benchmarks.md)
 - [API reference](docs/api-reference.md)

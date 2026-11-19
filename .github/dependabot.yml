@@ -1,0 +1,32 @@
+version: 2
+updates:
+  # Go module dependencies.
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: [dependencies, go]
+    commit-message:
+      prefix: "deps(go)"
+
+  # GitHub Actions versions (keep actions/checkout, setup-go, etc. current).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, ci]
+    commit-message:
+      prefix: "deps(ci)"
+
+  # Dockerfile base images (golang, distroless).
+  - package-ecosystem: docker
+    directory: "/deployments/docker"
+    schedule:
+      interval: weekly
+      day: monday
+    labels: [dependencies, docker]
+    commit-message:
+      prefix: "deps(docker)"
