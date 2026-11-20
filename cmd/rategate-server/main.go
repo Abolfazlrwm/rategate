@@ -94,7 +94,7 @@ func run() error {
 	core := server.New(cfg, s, metrics, logger)
 
 	// set once the janitor starts; stop is invoked on shutdown
-	var janitorStop func() = func() {}
+	var janitorStop func()
 
 	// gRPC listener
 	grpcAddr := fmt.Sprintf("%s:%d", cfg.Server.GRPCHost, cfg.Server.GRPCPort)

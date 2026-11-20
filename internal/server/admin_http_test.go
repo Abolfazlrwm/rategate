@@ -236,7 +236,7 @@ func TestAdmin_DeletePolicyRemovesFromHotPath(t *testing.T) {
 // policy surface answers 503 for every method instead of being left open.
 func TestAdmin_DisabledWithoutAnyCredential(t *testing.T) {
 	core, rest := newTestServer(t)
-	core.cfg.Server.APIKey = ""       // client key unset
+	core.cfg.Server.APIKey = ""      // client key unset
 	core.cfg.Server.AdminAPIKey = "" // admin key unset
 	engine := rest.Engine()
 

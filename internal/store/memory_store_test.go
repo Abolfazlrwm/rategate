@@ -155,3 +155,34 @@ func TestErrUnknownAlgorithm_Message(t *testing.T) {
 		t.Fatal("error message empty")
 	}
 }
+
+func TestMemoryStore_SweepEvictsIdleKeysAcrossAlgorithms(t *testing.T) {
+	s := NewMemoryStore(MemoryOptions{TBShards: 8, SWShards: 8, SWGranularity: 6, AdaptiveShards: 8})
+	defer s.Close()
+
+	policy := algorithms.Policy{Limit: 5, RefillPerSecond: 1, Window: time.Minute}
+	now := time.Date(2025, 11, 12, 10, 0, 0, 0, time.UTC)
+
+	algos := []string{algorithms.AlgorithmTokenBucket, algorithms.AlgorithmSlidingWindow, algorithms.AlgorithmAdaptive}
+	for _, algo := range algos {
+		if _, err := s.Check(context.Background(), algo, "k", policy, now); err != nil {
+			t.Fatalf("check %s: %v", algo, err)
+		}
+	}
+
+	// A generous idle removes nothing from keys that just saw traffic.
+	if got := s.Sweep(now.Add(time.Minute), 2*time.Minute); got != 0 {
+		t.Fatalf("fresh sweep removed %d, want 0", got)
+	}
+	// Once idle past the window, one entry is evicted per algorithm.
+	if got := s.Sweep(now.Add(3*time.Minute), 2*time.Minute); got != 3 {
+		t.Fatalf("idle sweep removed %d, want 3", got)
+	}
+	// Swept keys start from scratch and are admitted again.
+	for _, algo := range algos {
+		d, err := s.Check(context.Background(), algo, "k", policy, now.Add(4*time.Minute))
+		if err != nil || !d.Allowed {
+			t.Fatalf("post-sweep check %s: allowed=%v err=%v", algo, d.Allowed, err)
+		}
+	}
+}

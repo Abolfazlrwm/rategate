@@ -67,3 +67,40 @@ func TestAdaptiveLimiterSweepEvictsIdleKeys(t *testing.T) {
 		t.Fatalf("size=%d want 0 after sweep", al.ApproxSize())
 	}
 }
+
+func TestSlidingWindowSweepUsesDecayStampForApproximate(t *testing.T) {
+	// In approximate mode lastDecay advances on every Check while
+	// lastRotate stays at state creation, so Sweep must consider the
+	// newer of the two stamps when deciding idleness.
+	sw := NewSlidingWindow(SlidingWindowOptions{Shards: 4, Granularity: 6, Approximate: true})
+	now := time.Now()
+
+	// "old" is touched once and abandoned; "fresh" gets a second hit at
+	// now+30s, pushing its lastDecay (30s) past its lastRotate (0s).
+	if _, err := sw.Check("old", Policy{Limit: 3, Window: time.Minute}, now); err != nil {
+		t.Fatalf("check old: %v", err)
+	}
+	if _, err := sw.Check("fresh", Policy{Limit: 3, Window: time.Minute}, now); err != nil {
+		t.Fatalf("check fresh: %v", err)
+	}
+	later := now.Add(30 * time.Second)
+	if _, err := sw.Check("fresh", Policy{Limit: 3, Window: time.Minute}, later); err != nil {
+		t.Fatalf("re-check fresh: %v", err)
+	}
+
+	// Sweep at now+55s with idle 30s: "old" has been idle 55s -> evicted;
+	// "fresh" saw traffic 25s ago -> kept thanks to the decay stamp.
+	if got := sw.Sweep(now.Add(55*time.Second), 30*time.Second); got != 1 {
+		t.Fatalf("removed %d, want 1 (only 'old')", got)
+	}
+	if sw.ApproxSize() != 1 {
+		t.Fatalf("size=%d want 1 ('fresh' survives)", sw.ApproxSize())
+	}
+	// A later sweep past the fresh key's idle window evicts it too.
+	if got := sw.Sweep(later.Add(2*time.Minute), time.Minute); got != 1 {
+		t.Fatalf("second sweep removed %d, want 1", got)
+	}
+	if sw.ApproxSize() != 0 {
+		t.Fatalf("size=%d want 0 after both sweeps", sw.ApproxSize())
+	}
+}
