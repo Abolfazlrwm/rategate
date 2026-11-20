@@ -282,6 +282,31 @@ func (s *SlidingWindow) Reset() {
 	}
 }
 
+// Sweep evicts per-key window state idle longer than `idle` and returns the
+// number of entries removed. Both the exact ring (lastRotate) and the
+// approximate sketch (lastDecay) stamp every Check, so an evicted key is
+// guaranteed to have seen no traffic for the whole idle duration; a later
+// Check simply starts a fresh window. The server janitor calls this
+// periodically to bound memory against unique-identifier floods.
+func (s *SlidingWindow) Sweep(now time.Time, idle time.Duration) int {
+	removed := 0
+	for _, sh := range s.shards {
+		sh.mu.Lock()
+		for key, st := range sh.windows {
+			last := st.lastRotate
+			if st.lastDecay.After(last) {
+				last = st.lastDecay
+			}
+			if now.Sub(last) > idle {
+				delete(sh.windows, key)
+				removed++
+			}
+		}
+		sh.mu.Unlock()
+	}
+	return removed
+}
+
 // ApproxSize returns the approximate number of tracked keys.
 func (s *SlidingWindow) ApproxSize() int {
 	n := 0

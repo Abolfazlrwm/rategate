@@ -203,6 +203,25 @@ func (a *AdaptiveLimiter) Reset() {
 	}
 }
 
+// Sweep evicts adaptive state for keys idle longer than `idle` (measured from
+// the sampling window start, which every Check refreshes) and returns the
+// number of entries removed. Called by the server janitor to bound memory;
+// an evicted key starts over at the policy floor on its next Check.
+func (a *AdaptiveLimiter) Sweep(now time.Time, idle time.Duration) int {
+	removed := 0
+	for _, s := range a.shards {
+		s.mu.Lock()
+		for key, st := range s.states {
+			if now.Sub(st.windowStart) > idle {
+				delete(s.states, key)
+				removed++
+			}
+		}
+		s.mu.Unlock()
+	}
+	return removed
+}
+
 // ApproxSize returns the approximate number of tracked keys. Locks each shard
 // briefly; not for the hot path.
 func (a *AdaptiveLimiter) ApproxSize() int {

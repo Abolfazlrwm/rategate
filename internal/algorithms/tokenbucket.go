@@ -136,6 +136,28 @@ func (t *TokenBucket) Reset() {
 	}
 }
 
+// Sweep evicts bucket state for keys idle longer than `idle` (measured from
+// the last refill/Check) and returns the number of entries removed.
+//
+// The memory backend has no per-key TTL, so without a janitor the bucket map
+// grows once for every unique identifier ever seen — an unbounded-memory DoS
+// vector. Sweep is called periodically by the server janitor; a Check for an
+// evicted key simply starts a fresh full bucket.
+func (t *TokenBucket) Sweep(now time.Time, idle time.Duration) int {
+	removed := 0
+	for _, s := range t.shards {
+		s.mu.Lock()
+		for key, st := range s.buckets {
+			if now.Sub(st.lastFill) > idle {
+				delete(s.buckets, key)
+				removed++
+			}
+		}
+		s.mu.Unlock()
+	}
+	return removed
+}
+
 // ApproxSize returns the approximate total number of tracked keys across
 // all shards. It locks each shard briefly; do not call on the hot path.
 func (t *TokenBucket) ApproxSize() int {

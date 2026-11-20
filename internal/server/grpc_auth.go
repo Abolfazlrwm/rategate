@@ -13,6 +13,9 @@
 // "Everything else" is intentionally public so kubelet gRPC health probes and
 // grpcurl reflection work without a credential, matching the public /healthz,
 // /readyz and /metrics REST routes.
+//
+// AdminService with neither server.admin_api_key nor server.api_key set is
+// deny-by-default (Unauthenticated), mirroring the REST admin group.
 package server
 
 import (
@@ -24,6 +27,11 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// adminDisabledSentinel is the credential demanded from AdminService methods
+// when no admin key is configured. It cannot appear in valid metadata, so the
+// comparison always fails and the method stays closed.
+const adminDisabledSentinel = "\x00rategate-admin-disabled\x00"
 
 // AuthUnaryInterceptor returns a gRPC unary server interceptor enforcing the
 // same API-key auth as the REST AuthMiddleware. When the required key for a
@@ -49,7 +57,13 @@ func (s *Server) requiredAPIKey(fullMethod string) string {
 		if s.cfg.Server.AdminAPIKey != "" {
 			return s.cfg.Server.AdminAPIKey
 		}
-		return s.cfg.Server.APIKey
+		if s.cfg.Server.APIKey != "" {
+			return s.cfg.Server.APIKey
+		}
+		// Deny by default: with no credential configured, the admin surface
+		// must stay closed. No client can present this sentinel key, so the
+		// interceptor always answers Unauthenticated.
+		return adminDisabledSentinel
 	case fullMethod == "/rategate.v1.RateGateService/CheckRateLimit":
 		return s.cfg.Server.APIKey
 	default:

@@ -76,6 +76,16 @@ func (m *MemoryStore) Check(_ context.Context, algo, key string, policy algorith
 	}
 }
 
+// Sweep evicts state for keys that have seen no traffic for `idle`, bounding
+// memory growth against floods of unique identifiers (the in-memory backend
+// has no TTL mechanism, so a janitor is the only bound). Returns the number
+// of removed entries across all algorithms.
+func (m *MemoryStore) Sweep(now time.Time, idle time.Duration) int {
+	return m.tokenBucket.Sweep(now, idle) +
+		m.slidingWindow.Sweep(now, idle) +
+		m.adaptive.Sweep(now, idle)
+}
+
 // Close implements [Store]; no-op for the memory store.
 func (m *MemoryStore) Close() error { return nil }
 

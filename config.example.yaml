@@ -28,6 +28,8 @@ store:
   memory_sw_approximate: false
   # Adaptive limiter tuning (only used by "adaptive" policies).
   memory_adaptive_shards: 256
+  memory_sweep_interval: 1m   # janitor period for evicting idle key state
+  memory_sweep_idle: 1h      # keys with no traffic for this long are evicted
   memory_adaptive_max_factor: 4.0   # effective limit in [floor, floor*max_factor]
   # fail_open: false               # admit a request when the store errors
   #                               # (e.g. Redis down) instead of failing closed.

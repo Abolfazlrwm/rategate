@@ -25,6 +25,9 @@ func newTestServer(t *testing.T) (*Server, *HTTPServer) {
 	cfg := &config.Config{}
 	cfg.Store.Backend = "memory"
 	cfg.Store.DefaultAlgorithm = "tokenbucket"
+	// Admin routes are deny-by-default, so admin CRUD tests authenticate
+	// with this key; tests that exercise the disabled path override it.
+	cfg.Server.AdminAPIKey = "admin-test-key"
 	cfg.Policies = []config.PolicyConfig{
 		{Name: "strict", Algorithm: "tokenbucket", Limit: 2, RefillPerSecond: 1},
 		{Name: "sw", Algorithm: "slidingwindow", Limit: 2, Window: time.Minute},

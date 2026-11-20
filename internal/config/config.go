@@ -99,6 +99,16 @@ type StoreConfig struct {
 	MemoryAdaptiveShards    int     `mapstructure:"memory_adaptive_shards"`
 	MemoryAdaptiveMaxFactor float64 `mapstructure:"memory_adaptive_max_factor"`
 
+	// MemorySweepInterval is how often the server janitor sweeps idle key
+	// state out of the memory backend (memory backend only). Zero falls
+	// back to 1 minute; negative disables the janitor entirely (not
+	// recommended: unique-identifier floods then grow memory unboundedly).
+	MemorySweepInterval time.Duration `mapstructure:"memory_sweep_interval"`
+
+	// MemorySweepIdle is the inactivity threshold after which a key's state
+	// is eligible for eviction. Zero falls back to 1 hour.
+	MemorySweepIdle time.Duration `mapstructure:"memory_sweep_idle"`
+
 	// FailOpen controls the Check behavior when the backing store returns an
 	// error (e.g. Redis unreachable). The default (false) is fail-closed: the
 	// check surfaces the error and the request is not admitted (the limiter is
@@ -225,6 +235,8 @@ func New() *viper.Viper {
 	v.SetDefault("store.memory_sw_approximate", false)
 	v.SetDefault("store.memory_adaptive_shards", 256)
 	v.SetDefault("store.memory_adaptive_max_factor", 4.0)
+	v.SetDefault("store.memory_sweep_interval", time.Minute)
+	v.SetDefault("store.memory_sweep_idle", time.Hour)
 
 	v.SetDefault("redis.addr", DefaultRedisAddr)
 	v.SetDefault("redis.password", "")

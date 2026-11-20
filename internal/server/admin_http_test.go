@@ -10,7 +10,7 @@ import (
 
 // doJSON issues a request with an optional JSON body against engine and
 // returns the recorder and the decoded JSON map (or nil on empty body).
-func doJSON(t *testing.T, engine http.Handler, method, path string, body any) (rec *httptest.ResponseRecorder, parsed map[string]any) {
+func doJSON(t *testing.T, engine http.Handler, method, path string, body any, apiKey ...string) (rec *httptest.ResponseRecorder, parsed map[string]any) {
 	t.Helper()
 	var buf *bytes.Buffer
 	if body != nil {
@@ -24,6 +24,9 @@ func doJSON(t *testing.T, engine http.Handler, method, path string, body any) (r
 	}
 	req := httptest.NewRequest(method, path, buf)
 	req.Header.Set("Content-Type", "application/json")
+	if len(apiKey) > 0 && apiKey[0] != "" {
+		req.Header.Set("x-api-key", apiKey[0])
+	}
 	w := httptest.NewRecorder()
 	engine.ServeHTTP(w, req)
 	var out map[string]any
@@ -36,7 +39,7 @@ func doJSON(t *testing.T, engine http.Handler, method, path string, body any) (r
 func TestAdmin_ListSeededPolicies(t *testing.T) {
 	_, rest := newTestServer(t)
 	engine := rest.Engine()
-	w, out := doJSON(t, engine, http.MethodGet, "/v1/admin/policies", nil)
+	w, out := doJSON(t, engine, http.MethodGet, "/v1/admin/policies", nil, "admin-test-key")
 	if w.Code != http.StatusOK {
 		t.Fatalf("status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -54,7 +57,7 @@ func TestAdmin_CreateAndGet(t *testing.T) {
 		"name": "newpol", "algorithm": "tokenbucket",
 		"limit": 7, "refill_per_second": 2,
 	}
-	w, resp := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body)
+	w, resp := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body, "admin-test-key")
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -63,7 +66,7 @@ func TestAdmin_CreateAndGet(t *testing.T) {
 	}
 
 	// GET it back.
-	w, resp = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/newpol", nil)
+	w, resp = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/newpol", nil, "admin-test-key")
 	if w.Code != http.StatusOK {
 		t.Fatalf("get status=%d", w.Code)
 	}
@@ -79,7 +82,7 @@ func TestAdmin_CreateDuplicateConflict(t *testing.T) {
 		"name": "strict", "algorithm": "tokenbucket",
 		"limit": 1, "refill_per_second": 1,
 	}
-	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body)
+	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body, "admin-test-key")
 	if w.Code != http.StatusConflict {
 		t.Fatalf("duplicate create status=%d want 409", w.Code)
 	}
@@ -92,7 +95,7 @@ func TestAdmin_CreateInvalidPolicy(t *testing.T) {
 		"name": "bad", "algorithm": "tokenbucket",
 		"limit": 0, "refill_per_second": 1,
 	}
-	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body)
+	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body, "admin-test-key")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("invalid create status=%d want 400", w.Code)
 	}
@@ -105,7 +108,7 @@ func TestAdmin_UpdateExisting(t *testing.T) {
 		"name": "strict", "algorithm": "tokenbucket",
 		"limit": 50, "refill_per_second": 10,
 	}
-	w, resp := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/strict", body)
+	w, resp := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/strict", body, "admin-test-key")
 	if w.Code != http.StatusOK {
 		t.Fatalf("update status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -113,7 +116,7 @@ func TestAdmin_UpdateExisting(t *testing.T) {
 		t.Fatalf("update response limit=%v want 50", resp["limit"])
 	}
 	// Verify via GET.
-	_, resp = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/strict", nil)
+	_, resp = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/strict", nil, "admin-test-key")
 	if resp["limit"].(float64) != 50 {
 		t.Fatalf("post-update get limit=%v want 50", resp["limit"])
 	}
@@ -126,7 +129,7 @@ func TestAdmin_UpdateMissingNotFound(t *testing.T) {
 		"name": "ghost", "algorithm": "tokenbucket",
 		"limit": 1, "refill_per_second": 1,
 	}
-	w, _ := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/ghost", body)
+	w, _ := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/ghost", body, "admin-test-key")
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("update missing status=%d want 404", w.Code)
 	}
@@ -139,7 +142,7 @@ func TestAdmin_UpdateNameMismatch(t *testing.T) {
 		"name": "other", "algorithm": "tokenbucket",
 		"limit": 1, "refill_per_second": 1,
 	}
-	w, _ := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/strict", body)
+	w, _ := doJSON(t, engine, http.MethodPut, "/v1/admin/policies/strict", body, "admin-test-key")
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("name mismatch status=%d want 400", w.Code)
 	}
@@ -148,11 +151,11 @@ func TestAdmin_UpdateNameMismatch(t *testing.T) {
 func TestAdmin_DeleteThenGet(t *testing.T) {
 	_, rest := newTestServer(t)
 	engine := rest.Engine()
-	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/sw", nil)
+	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/sw", nil, "admin-test-key")
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d want 204", w.Code)
 	}
-	w, _ = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/sw", nil)
+	w, _ = doJSON(t, engine, http.MethodGet, "/v1/admin/policies/sw", nil, "admin-test-key")
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("get after delete status=%d want 404", w.Code)
 	}
@@ -161,7 +164,7 @@ func TestAdmin_DeleteThenGet(t *testing.T) {
 func TestAdmin_DeleteMissingNotFound(t *testing.T) {
 	_, rest := newTestServer(t)
 	engine := rest.Engine()
-	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/ghost", nil)
+	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/ghost", nil, "admin-test-key")
 	if w.Code != http.StatusNotFound {
 		t.Fatalf("delete missing status=%d want 404", w.Code)
 	}
@@ -180,7 +183,7 @@ func TestAdmin_CreatedPolicyIsUsableInCheck(t *testing.T) {
 		"name": "dynamic", "algorithm": "tokenbucket",
 		"limit": 1, "refill_per_second": 1,
 	}
-	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body)
+	w, _ := doJSON(t, engine, http.MethodPost, "/v1/admin/policies", body, "admin-test-key")
 	if w.Code != http.StatusCreated {
 		t.Fatalf("create status=%d body=%s", w.Code, w.Body.String())
 	}
@@ -213,7 +216,7 @@ func TestAdmin_DeletePolicyRemovesFromHotPath(t *testing.T) {
 	engine := rest.Engine()
 
 	// Delete "strict".
-	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/strict", nil)
+	w, _ := doJSON(t, engine, http.MethodDelete, "/v1/admin/policies/strict", nil, "admin-test-key")
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("delete status=%d", w.Code)
 	}
@@ -225,5 +228,27 @@ func TestAdmin_DeletePolicyRemovesFromHotPath(t *testing.T) {
 	engine.ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("check after delete status=%d want 400 (unknown policy)", w.Code)
+	}
+}
+
+// TestAdmin_DisabledWithoutAnyCredential pins the deny-by-default contract:
+// with neither server.admin_api_key nor server.api_key configured, the admin
+// policy surface answers 503 for every method instead of being left open.
+func TestAdmin_DisabledWithoutAnyCredential(t *testing.T) {
+	core, rest := newTestServer(t)
+	core.cfg.Server.APIKey = ""       // client key unset
+	core.cfg.Server.AdminAPIKey = "" // admin key unset
+	engine := rest.Engine()
+
+	for _, tc := range []struct {
+		method, path string
+		body         any
+	}{{http.MethodGet, "/v1/admin/policies", nil},
+		{http.MethodPost, "/v1/admin/policies", policyJSON{Name: "x", Limit: 1, WindowMs: 1000}},
+		{http.MethodDelete, "/v1/admin/policies/x", nil}} {
+		rec, _ := doJSON(t, engine, tc.method, tc.path, tc.body)
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Fatalf("admin %s %s with no credentials: %d want 503 (deny-by-default)", tc.method, tc.path, rec.Code)
+		}
 	}
 }

@@ -65,7 +65,9 @@ func TestAdmin_RESTSeparateAdminKey(t *testing.T) {
 func TestAdmin_RESTAdminFallsBackToClientKey(t *testing.T) {
 	core, rest := newTestServer(t)
 	core.cfg.Server.APIKey = "shared-secret"
-	// AdminAPIKey left empty on purpose.
+	// AdminAPIKey left empty on purpose (overrides the newTestServer default)
+	// so the fallback-to-client-key path is what authenticates the call.
+	core.cfg.Server.AdminAPIKey = ""
 	engine := rest.Engine()
 
 	body := `{"name":"p2","algorithm":"tokenbucket","limit":1,"refill_per_second":1}`

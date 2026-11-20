@@ -93,6 +93,9 @@ func run() error {
 	// Core server
 	core := server.New(cfg, s, metrics, logger)
 
+	// set once the janitor starts; stop is invoked on shutdown
+	var janitorStop func() = func() {}
+
 	// gRPC listener
 	grpcAddr := fmt.Sprintf("%s:%d", cfg.Server.GRPCHost, cfg.Server.GRPCPort)
 	grpcLis, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", grpcAddr)
@@ -134,6 +137,11 @@ func run() error {
 
 	core.MarkReady()
 
+	// Janitor: the memory backend has no per-key TTL, so without periodic
+	// sweeps the state maps grow once for every unique identifier ever seen.
+	// Only the memory backend needs this; Redis keys carry TTLs already.
+	janitorStop = startMemoryJanitor(cfg, s, logger)
+
 	// Start listeners
 	errCh := make(chan error, 2)
 	go func() {
@@ -160,6 +168,7 @@ func run() error {
 	}
 
 	core.MarkNotReady()
+	janitorStop()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	grpcSrv.GracefulStop()
@@ -216,6 +225,46 @@ func buildStore(cfg *config.Config) (store.Store, error) {
 	default:
 		return nil, fmt.Errorf("unknown store backend %q", cfg.Store.Backend)
 	}
+}
+
+// startMemoryJanitor sweeps idle key state out of the memory store on a
+// fixed interval. Returns a stop func that terminates the goroutine.
+func startMemoryJanitor(cfg *config.Config, st store.Store, logger *slog.Logger) func() {
+	if cfg.Store.MemorySweepInterval < 0 || cfg.Store.Backend != "memory" {
+		return func() {}
+	}
+	interval := cfg.Store.MemorySweepInterval
+	if interval <= 0 {
+		interval = time.Minute
+	}
+	idle := cfg.Store.MemorySweepIdle
+	if idle <= 0 {
+		idle = time.Hour
+	}
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-ticker.C:
+				mem, ok := st.(interface {
+					Sweep(now time.Time, idle time.Duration) int
+				})
+				if !ok {
+					return
+				}
+				if removed := mem.Sweep(time.Now(), idle); removed > 0 {
+					logger.Info("janitor swept idle keys", "removed", removed, "idle_threshold", idle.String())
+				}
+			}
+		}
+	}()
+	return func() { close(stop); <-done }
 }
 
 // redactedSnapshot returns a map of non-sensitive config fields for logging.

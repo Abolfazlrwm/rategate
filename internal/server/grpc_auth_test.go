@@ -91,7 +91,9 @@ func TestServer_AuthInterceptorDisabled(t *testing.T) {
 func TestServer_AuthInterceptor_AdminFallbackToClientKey(t *testing.T) {
 	core, _ := newTestServer(t)
 	core.cfg.Server.APIKey = "shared-secret"
-	// AdminAPIKey intentionally left empty.
+	// AdminAPIKey intentionally emptied (overrides the newTestServer default)
+	// so the fallback-to-client-key branch is what authenticates the call.
+	core.cfg.Server.AdminAPIKey = ""
 	intercept := core.AuthUnaryInterceptor()
 
 	called := false
@@ -115,5 +117,24 @@ func TestServer_AuthInterceptor_AdminFallbackToClientKey(t *testing.T) {
 	}
 	if !called {
 		t.Fatal("handler should be called with the shared (fallback) key")
+	}
+}
+
+// TestServer_AuthInterceptor_AdminDisabledWithoutAnyCredential pins the
+// deny-by-default contract for the gRPC admin surface: with neither
+// admin_api_key nor api_key configured, AdminService methods answer
+// Unauthenticated even for a caller that presents some other credential.
+func TestServer_AuthInterceptor_AdminDisabledWithoutAnyCredential(t *testing.T) {
+	core, _ := newTestServer(t)
+	core.cfg.Server.APIKey = ""
+	core.cfg.Server.AdminAPIKey = ""
+	intercept := core.AuthUnaryInterceptor()
+
+	handler := func(_ context.Context, _ any) (any, error) { return "ok", nil }
+	info := &grpc.UnaryServerInfo{FullMethod: "/rategate.v1.AdminService/ListPolicies"}
+
+	ctx := metadata.NewIncomingContext(context.Background(), metadata.Pairs("x-api-key", "anything"))
+	if _, err := intercept(ctx, nil, info, handler); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("admin with no server credential: code=%v want Unauthenticated (deny-by-default)", status.Code(err))
 	}
 }

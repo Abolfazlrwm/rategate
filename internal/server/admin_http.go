@@ -3,7 +3,9 @@
 // admin_http.go — REST admin API for runtime policy management.
 //
 // Routes (all under /v1/admin; gated by server.admin_api_key when set,
-// otherwise by server.api_key, otherwise unauthenticated):
+// otherwise by server.api_key; when neither credential is configured the
+// routes answer 503 and deny everything — the policy-mutation surface is
+// never left open):
 //
 //	GET    /v1/admin/policies          list all policies (sorted by name)
 //	POST   /v1/admin/policies          create a policy (409 if name exists)
@@ -70,6 +72,17 @@ func (h *HTTPServer) registerAdminRoutes(r *gin.Engine) {
 	g := r.Group("/v1/admin/policies")
 	if adminKey != "" {
 		g.Use(AuthMiddleware(adminKey))
+	} else {
+		// Deny by default. An unauthenticated policy-mutation API would let
+		// anyone rewrite live rate limits (or poison them to unlimited), so
+		// with no credential configured the whole group is disabled. 503
+		// tells operators the feature exists but is switched off, not that
+		// they hit a wrong route.
+		g.Use(func(c *gin.Context) {
+			c.AbortWithStatusJSON(http.StatusServiceUnavailable, gin.H{
+				"error": "admin API is disabled: configure server.admin_api_key (or server.api_key) to enable it",
+			})
+		})
 	}
 	g.GET("", h.handleListPolicies)
 	g.POST("", h.handleCreatePolicy)
