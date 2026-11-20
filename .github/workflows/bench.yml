@@ -43,7 +43,7 @@ jobs:
           benchstat /tmp/bench-base.txt /tmp/bench-head.txt | tee /tmp/bench-diff.txt
 
       - name: Comment on PR
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
