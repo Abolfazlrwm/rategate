@@ -59,6 +59,9 @@ jobs:
         with:
           files: coverage.out
           fail_ci_if_error: false
+          # Add a CODECOV_TOKEN repo secret (https://app.codecov.io onboarding)
+          # for the most reliable upload; falls back to tokenless OIDC if absent.
+          token: ${{ secrets.CODECOV_TOKEN }}
           use-oidc: true
 
   lint:
