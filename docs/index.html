@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="RateGate — interactive rate-limiter playground. Visualize token-bucket and sliding-window algorithms live, in your browser.">
+<meta name="description" content="RateGate — interactive rate-limiter playground. Visualize token-bucket, sliding-window and adaptive algorithms live, in your browser.">
 <title>RateGate — Live Rate-Limiter Playground</title>
 <style>
   :root{
     --bg:#0b0f14; --panel:#121a24; --panel2:#0f1620; --line:#1f2a38;
-    --txt:#e6edf3; --mut:#8b98a9; --acc:#22d3ee; --acc2:#a78bfa; --ok:#34d399; --no:#f87171;
+    --txt:#e6edf3; --mut:#8b98a9; --acc:#22d3ee; --acc2:#a78bfa; --ok:#34d399; --no:#f87171; --warn:#fbbf24;
     --grad:linear-gradient(135deg,#22d3ee 0%,#a78bfa 100%);
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -19,45 +19,44 @@
   a{color:var(--acc);text-decoration:none}
   a:hover{text-decoration:underline}
   .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
-  /* header */
   header{border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(34,211,238,.05),transparent)}
   .nav{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 0}
   .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.15rem;letter-spacing:-.01em}
-  .logo{width:30px;height:30px;border-radius:8px;background:var(--grad);display:grid;place-items:center;
-    color:#0b0f14;font-weight:800;font-size:.95rem}
+  .logo{width:30px;height:30px;border-radius:8px;background:var(--grad);display:grid;place-items:center;color:#0b0f14;font-weight:800;font-size:.95rem}
   .brand small{color:var(--mut);font-weight:400;font-size:.78rem}
   .links{display:flex;gap:18px;font-size:.9rem}
   .links a{color:var(--mut)}
   .links a:hover{color:var(--txt)}
-  /* hero */
   .hero{padding:48px 0 24px;text-align:center}
   .hero h1{font-size:clamp(2rem,6vw,3.1rem);margin:0 0 12px;letter-spacing:-.03em;line-height:1.05}
   .hero h1 .g{background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-  .hero p{color:var(--mut);font-size:clamp(1rem,2.5vw,1.18rem);max-width:640px;margin:0 auto}
+  .hero p{color:var(--mut);font-size:clamp(1rem,2.5vw,1.18rem);max-width:680px;margin:0 auto}
   .hero .gh{margin-top:18px;display:inline-flex;gap:10px;flex-wrap:wrap;justify-content:center}
   .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;font-weight:600;font-size:.92rem;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--txt);transition:.15s}
   .btn:hover{border-color:var(--acc);text-decoration:none}
   .btn.primary{background:var(--grad);color:#0b0f14;border:none}
-  /* playground */
   section.pg{padding:24px 0 8px}
   .grid{display:grid;grid-template-columns:300px 1fr;gap:18px}
   @media(max-width:760px){.grid{grid-template-columns:1fr}}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}
   .card h3{margin:0 0 14px;font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mut)}
-  /* tabs */
-  .tabs{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:4px;margin-bottom:16px}
-  .tabs button{flex:1;padding:9px;border:none;background:transparent;color:var(--mut);font-weight:600;font-size:.88rem;border-radius:7px;cursor:pointer;transition:.15s}
+  .tabs{display:flex;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:4px;margin-bottom:10px}
+  .tabs button{flex:1;padding:9px 4px;border:none;background:transparent;color:var(--mut);font-weight:600;font-size:.8rem;border-radius:7px;cursor:pointer;transition:.15s}
   .tabs button.on{background:var(--grad);color:#0b0f14}
-  /* controls */
+  .captn{font-size:.76rem;color:var(--mut);margin:0 0 14px;line-height:1.45}
   label{display:block;font-size:.78rem;color:var(--mut);margin:12px 0 6px}
   input[type=range]{width:100%;accent-color:var(--acc)}
+  input[type=text]{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--txt);font-family:var(--mono);font-size:.82rem;padding:8px 10px}
+  input[type=text]:focus{outline:none;border-color:var(--acc)}
   .val{font-family:var(--mono);color:var(--txt);font-size:.85rem}
+  .presets{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 4px}
+  .presets button{flex:1;min-width:90px;padding:7px 6px;border:1px solid var(--line);background:var(--panel2);color:var(--txt);border-radius:8px;font-size:.76rem;font-weight:600;cursor:pointer;transition:.15s}
+  .presets button:hover{border-color:var(--acc);color:var(--acc)}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
   .btn.sm{padding:8px 12px;font-size:.84rem}
   .btn.fire{flex:1;background:var(--grad);color:#0b0f14;border:none;font-weight:700}
   .btn.go{background:var(--ok);color:#06281b;border:none}
   .btn.stop{background:var(--no);color:#3a0d0d;border:none}
-  /* visualization */
   .viz{min-height:260px;display:flex;flex-direction:column;gap:14px}
   .bucketwrap{position:relative;height:200px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .bucket{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:120px;height:150px;border:2px solid var(--line);border-top:none;border-radius:0 0 14px 14px;background:rgba(255,255,255,.02)}
@@ -67,31 +66,48 @@
   .flash{position:absolute;inset:0;background:radial-gradient(circle,rgba(52,211,153,.4),transparent 60%);opacity:0;pointer-events:none}
   .flash.deny{background:radial-gradient(circle,rgba(248,113,113,.4),transparent 60%)}
   .flash.show{opacity:1;transition:opacity .25s}
-  /* window viz */
   .winwrap{position:relative;height:200px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
   .winnow{position:absolute;top:0;bottom:0;right:0;width:2px;background:var(--acc)}
   .winnow::after{content:"now";position:absolute;top:4px;right:-2px;font-size:.62rem;color:var(--acc);transform:translateX(100%)}
-  .dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--ok);transform:translate(-50%,-50%);transition:left .1s linear}
+  .dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--ok);transform:translate(-50%,-50%)}
   .dot.deny{background:var(--no);opacity:.7}
   .winfade{position:absolute;top:0;bottom:0;right:0;background:linear-gradient(90deg,transparent,rgba(11,15,20,.9));pointer-events:none}
-  /* stats + chart */
-  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:18px}
+  /* adaptive rate gauge */
+  .gauge{margin-top:6px}
+  .gauge .lab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--mut);margin-bottom:4px;font-family:var(--mono)}
+  .gauge .bar{position:relative;height:10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .gauge .lvl{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--warn),var(--ok));transition:width .2s}
+  .gauge .mark{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--acc)}
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
   @media(max-width:560px){.stats{grid-template-columns:repeat(2,1fr)}}
   .stat{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
   .stat .n{font-family:var(--mono);font-size:1.3rem;font-weight:700}
   .stat .l{font-size:.68rem;color:var(--mut);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
-  .stat.ok .n{color:var(--ok)} .stat.no .n{color:var(--no)} .stat.rps .n{color:var(--acc)}
-  canvas{width:100%;height:130px;display:block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin-top:14px}
-  /* feed */
-  .feed{max-height:170px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin-top:14px;font-family:var(--mono);font-size:.78rem}
+  .stat.ok .n{color:var(--ok)} .stat.no .n{color:var(--no)} .stat.rps .n{color:var(--acc)} .stat.warn .n{color:var(--warn)}
+  canvas{width:100%;height:130px;display:block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin-top:0}
+  .why{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--acc);border-radius:8px;padding:10px 12px;margin-top:14px;font-family:var(--mono);font-size:.78rem;min-height:42px;line-height:1.5}
+  .why .hd{color:var(--mut);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+  .why .ok{color:var(--ok)} .why .no{color:var(--no)}
+  .feed{max-height:150px;overflow:auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;margin-top:14px;font-family:var(--mono);font-size:.78rem}
   .feed div{padding:5px 10px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
   .feed .ok{color:var(--ok)} .feed .no{color:var(--no)} .feed .t{color:var(--mut)}
-  /* code + curl */
-  .code{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.78rem;overflow-x:auto;line-height:1.6;color:#cdd9e5}
+  .code{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:14px;font-family:var(--mono);font-size:.78rem;overflow-x:auto;line-height:1.6;color:#cdd9e5;white-space:pre}
   .code .k{color:var(--acc2)} .code .s{color:var(--ok)} .code .c{color:var(--mut)}
   details{margin-top:14px}
   summary{cursor:pointer;color:var(--mut);font-size:.85rem;padding:8px 0}
   .curl{margin-top:14px}
+  .quickstart{margin:34px 0 8px}
+  .quickstart h2{font-size:clamp(1.3rem,3vw,1.7rem);margin:0 0 6px;letter-spacing:-.01em}
+  .quickstart p{color:var(--mut);font-size:.92rem;margin:0 0 16px}
+  .qs-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:680px){.qs-grid{grid-template-columns:1fr}}
+  .qs-step{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .qs-step .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--grad);color:#0b0f14;font-weight:800;font-size:.8rem;margin-bottom:8px}
+  .qs-step h4{margin:0 0 4px;font-size:.95rem}
+  .qs-step .sub{color:var(--mut);font-size:.78rem;margin:0 0 10px}
+  .copybtn{float:right;background:var(--panel2);border:1px solid var(--line);color:var(--mut);border-radius:6px;padding:3px 8px;font-size:.7rem;cursor:pointer;transition:.15s}
+  .copybtn:hover{color:var(--acc);border-color:var(--acc)}
+  .copybtn.done{color:var(--ok);border-color:var(--ok)}
   footer{border-top:1px solid var(--line);margin-top:40px;padding:26px 0;color:var(--mut);font-size:.85rem}
   footer .wrap{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
   .pill{display:inline-block;padding:2px 8px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);font-size:.72rem;color:var(--mut);margin-right:6px}
@@ -116,7 +132,7 @@
 <div class="wrap">
   <div class="hero">
     <h1>Watch a rate limiter <span class="g">think</span>.</h1>
-    <p>A faithful, in-browser simulation of the same token-bucket and sliding-window algorithms the RateGate server runs in Go — no backend, no signup. Tune a policy, hammer it, and see exactly which requests get through and why.</p>
+    <p>A faithful, in-browser simulation of the same token-bucket, sliding-window and adaptive algorithms the RateGate server runs in Go — no backend, no signup. Tune a policy, hammer it, and see exactly which requests get through and why.</p>
     <div class="gh">
       <a class="btn primary" href="https://github.com/Abolfazlrwm/rategate" target="_blank" rel="noopener">★ Source on GitHub</a>
       <a class="btn" href="#play">▶ Try it now</a>
@@ -127,11 +143,13 @@
     <div class="grid">
       <!-- controls -->
       <div class="card">
-        <h3>Policy</h3>
+        <h3>Algorithm</h3>
         <div class="tabs" id="tabs">
           <button data-algo="tokenbucket" class="on">Token Bucket</button>
           <button data-algo="slidingwindow">Sliding Window</button>
+          <button data-algo="adaptive">Adaptive</button>
         </div>
+        <p class="captn" id="captn"></p>
 
         <div id="tb-ctrl">
           <label>Capacity <span class="val" id="cap-v">10</span> tokens</label>
@@ -145,6 +163,24 @@
           <input type="range" id="lim" min="1" max="50" value="5">
           <label>Window <span class="val" id="win-v">10.0</span> s</label>
           <input type="range" id="win" min="10" max="600" value="100">
+        </div>
+
+        <div id="ad-ctrl" style="display:none">
+          <label>Capacity <span class="val" id="adcap-v">10</span> tokens</label>
+          <input type="range" id="adcap" min="1" max="50" value="10">
+          <label>Base refill <span class="val" id="adref-v">2.0</span> tok/s</label>
+          <input type="range" id="adref" min="1" max="200" value="20">
+        </div>
+
+        <h3 style="margin-top:18px">Rate-limit key</h3>
+        <input type="text" id="key" value="user:42" spellcheck="false">
+        <p class="captn" style="margin-top:6px">Each key has its own independent state. Change it to see isolation.</p>
+
+        <h3 style="margin-top:14px">Presets — one click</h3>
+        <div class="presets">
+          <button data-preset="burst">Burst</button>
+          <button data-preset="steady">Steady</button>
+          <button data-preset="overload">Overload</button>
         </div>
 
         <h3 style="margin-top:18px">Traffic</h3>
@@ -173,7 +209,19 @@
             <div class="winnow"></div>
             <div class="winfade"></div>
           </div>
+          <div class="bucketwrap" id="ad-viz" style="display:none">
+            <div class="bucket"><div class="fill" id="adfill" style="height:100%"></div></div>
+            <div class="capline" style="bottom:164px">capacity</div>
+            <div class="toklabel" id="adlabel">10</div>
+            <div class="flash" id="adflash"></div>
+          </div>
+          <div class="gauge" id="adgauge" style="display:none">
+            <div class="lab"><span>effective refill rate</span><span id="adgauge-txt">2.0/s</span></div>
+            <div class="bar"><div class="lvl" id="adgauge-lvl" style="width:67%"></div><div class="mark" id="adgauge-mark" style="left:67%"></div></div>
+            <div class="lab" style="margin-top:3px"><span>0</span><span style="color:var(--acc)">base</span><span>1.3× base</span></div>
+          </div>
           <canvas id="chart" width="900" height="130"></canvas>
+          <div class="why" id="why"><div class="hd">Last decision — why</div><span style="color:var(--mut)">Fire a request to see the algorithm's reasoning.</span></div>
           <div class="feed" id="feed"><div style="color:var(--mut)">Decisions will appear here…</div></div>
         </div>
         <div class="stats">
@@ -196,6 +244,31 @@
       <div class="code" id="curl"></div>
     </div>
   </section>
+
+  <section class="quickstart" id="run">
+    <h2>Prefer the real thing? Run it in one command.</h2>
+    <p>The playground above is a faithful client-side simulation. The actual RateGate server is a multi-arch distroless container on GHCR — pull it and you have a live gRPC + REST rate limiter in seconds.</p>
+    <div class="qs-grid">
+      <div class="qs-step">
+        <span class="n">1</span><button class="copybtn" data-copy="dockercmd">copy</button>
+        <h4>Run the server</h4>
+        <p class="sub">Non-root distroless image, ~25 MB, linux/amd64 + arm64.</p>
+        <div class="code" id="dockercmd">docker run -d --name rategate \
+  -p 8080:8080 -p 9090:9090 \
+  ghcr.io/abolfazlrwm/rategate:v0.2.1</div>
+      </div>
+      <div class="qs-step">
+        <span class="n">2</span><button class="copybtn" data-copy="curlcmd">copy</button>
+        <h4>Check a request</h4>
+        <p class="sub">REST on :8080 (gRPC on the same port). Mirrors the playground policy.</p>
+        <div class="code" id="curlcmd">curl -sX POST localhost:8080/v1/check \
+  -H "content-type: application/json" \
+  -d '{"key":"user:42","algorithm":"tokenbucket",
+       "limit":10,"refill_per_second":2}'</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;font-size:.85rem;color:var(--mut)">See <a href="https://github.com/Abolfazlrwm/rategate/blob/main/docs/api-reference.md" target="_blank" rel="noopener">the API reference</a> for the full gRPC service, adaptive config, and Prometheus / OpenTelemetry endpoints.</p>
+  </section>
 </div>
 
 <footer>
@@ -210,141 +283,185 @@
 <script>
 (function(){
   "use strict";
-  // ---------- faithful algorithm state ----------
+  // ---------- per-key state ----------
+  // Each key owns an independent { tb, sw, ad, stats } so switching keys
+  // demonstrates per-key isolation (the core abstraction of a rate limiter).
+  var CAPTIONS = {
+    tokenbucket:"Allows bursts up to capacity, then smooths at the refill rate. Good for APIs with bursty clients.",
+    slidingwindow:"Hard cap: at most N requests in any rolling window. Good for strict per-window quotas.",
+    adaptive:"Token bucket whose refill rate auto-backs-off under load and recovers when stable. Good for protecting a downstream service."
+  };
   var algo = "tokenbucket";
-  var tb = {tokens:10, last:null};   // token bucket state
-  var sw = [];                       // sliding-window: array of allowed timestamps (ms)
-  var stats = {total:0, ok:0, no:0};
-  var hist = [];                     // [{t, ok}] last ~600 decisions, for RPS + chart
-  var perSec = [];                   // [{s, ok, no}] per-second buckets, last 30
+  var curkey = "user:42";
+  var states = {};
+  var hist = [];
+  var perSec = [];
   var autoTimer = null, autoAccum = 0, lastTick = null;
 
   function now(){ return performance.now(); }
   function el(id){ return document.getElementById(id); }
 
+  function freshState(){
+    return {
+      tb:{tokens:+el("cap").value, last:null},
+      sw:[],
+      ad:{tokens:+el("adcap").value, last:null, effRate:(+el("adref").value)/10, recent:[]},
+      stats:{total:0, ok:0, no:0}
+    };
+  }
+  function st(){ if(!states[curkey]) states[curkey]=freshState(); return states[curkey]; }
+
   // ---------- policy reads ----------
   function policy(){
-    if(algo==="tokenbucket"){
-      return {algo:"tokenbucket", cap:+el("cap").value, ref:(+el("ref").value)/10};
-    }
-    return {algo:"slidingwindow", limit:+el("lim").value, windowMs:(+el("win").value)*100};
+    if(algo==="tokenbucket") return {algo:"tokenbucket", cap:+el("cap").value, ref:(+el("ref").value)/10};
+    if(algo==="slidingwindow") return {algo:"slidingwindow", limit:+el("lim").value, windowMs:(+el("win").value)*100};
+    return {algo:"adaptive", cap:+el("adcap").value, ref:(+el("adref").value)/10};
   }
 
   // ---------- the core check (faithful port of internal/algorithms) ----------
   function check(t){
-    var p = policy(), allowed=false, remaining=0, retry=0;
+    var p=policy(), s=st(), allowed=false, remaining=0, retry=0, why="";
     if(p.algo==="tokenbucket"){
-      if(tb.last==null){ tb.tokens=p.cap; tb.last=t; }
-      var dt=(t-tb.last)/1000;                 // seconds elapsed
-      tb.tokens=Math.min(p.cap, tb.tokens + dt*p.ref);
-      tb.last=t;
-      if(tb.tokens>=1){ tb.tokens-=1; allowed=true; remaining=Math.floor(tb.tokens); }
-      else { retry=Math.ceil((1-tb.tokens)/p.ref*1000); }
-    } else {
-      var cut=t-p.windowMs;
-      // drop expired
-      while(sw.length && sw[0]<cut) sw.shift();
-      if(sw.length<p.limit){ sw.push(t); allowed=true; remaining=p.limit-sw.length; }
-      else { retry=Math.max(1, Math.ceil(sw[0]+p.windowMs-t)); }
+      var b=s.tb;
+      if(b.last==null){ b.tokens=p.cap; b.last=t; }
+      var dt=(t-b.last)/1000;
+      var before=b.tokens;
+      b.tokens=Math.min(p.cap, b.tokens + dt*p.ref);
+      b.last=t;
+      if(b.tokens>=1){ b.tokens-=1; allowed=true; remaining=Math.floor(b.tokens);
+        why="tokens "+before.toFixed(2)+" → refill +"+(dt*p.ref).toFixed(2)+" → take 1 → <b>"+b.tokens.toFixed(2)+"</b> left (cap "+p.cap+")"; }
+      else { retry=Math.ceil((1-b.tokens)/p.ref*1000);
+        why="tokens "+b.tokens.toFixed(2)+" &lt; 1 → <b>DENY</b> · need 1, retry-after "+retry+"ms (refill "+p.ref.toFixed(1)+"/s)"; }
+    } else if(p.algo==="slidingwindow"){
+      var w=s.sw, cut=t-p.windowMs;
+      while(w.length && w[0]<cut) w.shift();
+      if(w.length<p.limit){ w.push(t); allowed=true; remaining=p.limit-w.length;
+        why="window "+(w.length-1)+"/"+p.limit+" → +1 → <b>"+w.length+"/"+p.limit+"</b> (rolling "+(p.windowMs/1000)+"s)"; }
+      else { retry=Math.max(1, Math.ceil(w[0]+p.windowMs-t));
+        why="window <b>"+w.length+"/"+p.limit+"</b> full → <b>DENY</b> · oldest expires in "+retry+"ms"; }
+    } else { // adaptive
+      var a=s.ad;
+      if(a.last==null){ a.tokens=p.cap; a.last=t; }
+      var adt=(t-a.last)/1000;
+      var abefore=a.tokens;
+      a.tokens=Math.min(p.cap, a.tokens + adt*a.effRate);
+      a.last=t;
+      if(a.tokens>=1){ a.tokens-=1; allowed=true; remaining=Math.floor(a.tokens);
+        why="tokens "+abefore.toFixed(2)+" → eff-refill +"+(adt*a.effRate).toFixed(2)+" → take 1 → <b>"+a.tokens.toFixed(2)+"</b> (eff "+a.effRate.toFixed(2)+"/s vs base "+p.ref.toFixed(2)+"/s)"; }
+      else { retry=Math.ceil((1-a.tokens)/Math.max(a.effRate,0.01)*1000);
+        why="tokens "+a.tokens.toFixed(2)+" &lt; 1 → <b>DENY</b> · eff rate "+a.effRate.toFixed(2)+"/s, retry "+retry+"ms"; }
+      // record + retune the effective rate from recent deny rate
+      a.recent.push(allowed); if(a.recent.length>20) a.recent.shift();
+      if(a.recent.length>=10 && s.stats.total%10===0){
+        var denies=0; for(var i=0;i<a.recent.length;i++) if(!a.recent[i]) denies++;
+        var dr=denies/a.recent.length;
+        if(dr>0.4) a.effRate=Math.max(p.ref*0.2, a.effRate*0.8);          // backoff: downstream stressed
+        else if(dr<0.1) a.effRate=Math.min(p.ref*1.3, a.effRate*1.1);     // recover: load healthy
+      }
     }
-    return {allowed:allowed, remaining:remaining, retry:retry};
+    return {allowed:allowed, remaining:remaining, retry:retry, why:why};
   }
 
   // ---------- fire one request ----------
   function fire(){
-    var t=now(); var r=check(t);
-    stats.total++; if(r.allowed) stats.ok++; else stats.no++;
+    var t=now(), r=check(t), s=st();
+    s.stats.total++; if(r.allowed) s.stats.ok++; else s.stats.no++;
     hist.push({t:t, ok:r.allowed}); if(hist.length>600) hist.shift();
-    bucket(t, r);
-    feed(t, r);
-    flash(!r.allowed);
+    var b=perSec[curSec(t)] || (perSec[curSec(t)]={s:curSec(t),ok:0,no:0});
+    if(r.allowed) b.ok++; else b.no++;
+    feed(t,r); why(r,t); flash(!r.allowed, algo==="adaptive");
     paint();
-  }
-
-  function bucket(t, r){
-    var s=perSec[curSec(t)] || (perSec[curSec(t)]={s:curSec(t),ok:0,no:0});
-    if(r.allowed) s.ok++; else s.no++;
   }
   function curSec(t){ return Math.floor(t/1000); }
 
   // ---------- visualization ----------
   function paint(){
-    var p=policy();
+    var p=policy(), s=st();
     if(algo==="tokenbucket"){
-      var pct=Math.max(0,Math.min(1, tb.tokens/p.cap));
+      var pct=Math.max(0,Math.min(1, s.tb.tokens/p.cap));
       el("fill").style.height=(pct*100)+"%";
-      el("toklabel").textContent=tb.tokens.toFixed(1);
-      el("viztitle").textContent="Token bucket — capacity "+p.cap+", refill "+p.ref.toFixed(1)+"/s";
-    } else {
+      el("toklabel").textContent=s.tb.tokens.toFixed(1);
+      el("viztitle").textContent="Token bucket — capacity "+p.cap+", refill "+p.ref.toFixed(1)+"/s · key "+curkey;
+    } else if(algo==="slidingwindow"){
       paintWindow();
-      el("viztitle").textContent="Sliding window — limit "+p.limit+" / "+(p.windowMs/1000)+"s";
+      el("viztitle").textContent="Sliding window — limit "+p.limit+" / "+(p.windowMs/1000)+"s · key "+curkey;
+    } else {
+      var apct=Math.max(0,Math.min(1, s.ad.tokens/p.cap));
+      el("adfill").style.height=(apct*100)+"%";
+      el("adlabel").textContent=s.ad.tokens.toFixed(1);
+      var gfrac=Math.max(0,Math.min(1.3, s.ad.effRate/p.ref))/1.3;
+      el("adgauge-lvl").style.width=(gfrac*100)+"%";
+      el("adgauge-mark").style.left=(1/1.3*100)+"%";
+      el("adgauge-txt").textContent=s.ad.effRate.toFixed(2)+"/s (base "+p.ref.toFixed(1)+"/s)";
+      el("viztitle").textContent="Adaptive — capacity "+p.cap+", base "+p.ref.toFixed(1)+"/s, eff "+s.ad.effRate.toFixed(2)+"/s · key "+curkey;
     }
-    el("s-total").textContent=stats.total;
-    el("s-ok").textContent=stats.ok;
-    el("s-no").textContent=stats.no;
-    el("s-ratio").textContent=stats.total?Math.round(100*stats.ok/stats.total)+"%":"100%";
+    el("s-total").textContent=s.stats.total;
+    el("s-ok").textContent=s.stats.ok;
+    el("s-no").textContent=s.stats.no;
+    el("s-ratio").textContent=s.stats.total?Math.round(100*s.stats.ok/s.stats.total)+"%":"100%";
     drawChart();
   }
 
   function paintWindow(){
-    var c=el("sw-viz"); var p=policy(); var t=now();
-    // remove old dots
+    var c=el("sw-viz"), p=policy(), s=st(), t=now();
     Array.prototype.forEach.call(c.querySelectorAll(".dot"), function(d){ d.remove(); });
-    var cut=t-p.windowMs;
-    var shown = sw.filter(function(x){ return x>=cut; });
-    shown.forEach(function(x){
+    var cut=t-p.windowMs, shown=s.sw.filter(function(x){ return x>=cut; });
+    shown.forEach(function(x,i){
       var d=document.createElement("div"); d.className="dot";
-      // map [cut, t] -> [0%, 100%]
-      var frac=(x-cut)/p.windowMs;
-      d.style.left=(frac*100)+"%";
-      d.style.top=(30+Math.random()*140)+"px";
+      d.style.left=((x-cut)/p.windowMs*100)+"%";
+      d.style.top=(24+((i*37)%150)+"px");
       c.appendChild(d);
     });
   }
 
   function drawChart(){
-    var cv=el("chart"), ctx=cv.getContext("2d");
-    var W=cv.width, H=cv.height;
+    var cv=el("chart");
+    var cw=cv.clientWidth||900, ch=130, dpr=window.devicePixelRatio||1;
+    if(cv.width!==cw*dpr||cv.height!==ch*dpr){ cv.width=cw*dpr; cv.height=ch*dpr; }
+    var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+    var W=cw, H=ch;
     ctx.clearRect(0,0,W,H);
-    // grid
     ctx.strokeStyle="#1f2a38"; ctx.lineWidth=1;
     for(var i=0;i<=4;i++){ ctx.beginPath(); ctx.moveTo(0,H*i/4); ctx.lineTo(W,H*i/4); ctx.stroke(); }
-    // build last 30s series
-    var t=now(); var curS=curSec(t);
-    var series=[]; for(var i=29;i>=0;i--){ var s=curS-i; var b=perSec[s]; series.push(b?{ok:b.ok,no:b.no}:{ok:0,no:0}); }
+    var t=now(), curS=curSec(t), series=[];
+    for(var j=29;j>=0;j--){ var s=perSec[curS-j]; series.push(s?{ok:s.ok,no:s.no}:{ok:0,no:0}); }
     var max=1; series.forEach(function(s){ max=Math.max(max,s.ok+s.no); });
     var step=W/30;
     function line(getter,color){
       ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
-      series.forEach(function(s,i){ var x=W-(29-i)*step; var y=H-(getter(s)/max)*H*0.9-4;
+      series.forEach(function(s,i){ var x=W-(29-i)*step, y=H-(getter(s)/max)*H*0.9-4;
         if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); });
       ctx.stroke();
     }
     line(function(s){return s.ok;},"#34d399");
     line(function(s){return s.no;},"#f87171");
-    // legend
-    ctx.font="10px ui-monospace,monospace"; ctx.fillStyle="#8b98a9";
-    ctx.fillText("allowed",8,14); ctx.fillStyle="#34d399"; ctx.fillRect(54,6,8,8);
+    ctx.font="10px ui-monospace,monospace";
+    ctx.fillStyle="#8b98a9"; ctx.fillText("allowed",8,14); ctx.fillStyle="#34d399"; ctx.fillRect(54,6,8,8);
     ctx.fillStyle="#8b98a9"; ctx.fillText("denied",74,14); ctx.fillStyle="#f87171"; ctx.fillRect(110,6,8,8);
   }
 
   function feed(t,r){
     var f=el("feed");
     if(f.firstChild && f.firstChild.nodeType===3) f.innerHTML="";
-    var d=document.createElement("div");
-    d.className=r.allowed?"ok":"no";
+    var d=document.createElement("div"); d.className=r.allowed?"ok":"no";
     var ts=new Date(); ts.setTime(Date.now());
-    var hh=String(ts.getHours()).padStart(2,"0"), mm=String(ts.getMinutes()).padStart(2,"0"), ss=String(ts.getSeconds()).padStart(2,"0"), ms=String(ts.getMilliseconds()).padStart(3,"0");
-    var msg = r.allowed
-      ? "ALLOWED · remaining "+r.remaining
-      : "DENIED · retry-after "+r.retry+"ms";
-    d.innerHTML = '<span>'+(r.allowed?"✓":"✗")+" "+msg+'</span><span class="t">'+hh+":"+mm+":"+ss+"."+ms+"</span>";
-    f.insertBefore(d, f.firstChild);
+    var p=function(n,w){ return String(n).padStart(w,"0"); };
+    var stamp=p(ts.getHours(),2)+":"+p(ts.getMinutes(),2)+":"+p(ts.getSeconds(),2)+"."+p(ts.getMilliseconds(),3);
+    var msg=r.allowed?"ALLOWED · remaining "+r.remaining:"DENIED · retry-after "+r.retry+"ms";
+    d.innerHTML='<span>'+(r.allowed?"✓":"✗")+" "+msg+'</span><span class="t">'+stamp+'</span>';
+    f.insertBefore(d,f.firstChild);
     while(f.childNodes.length>40) f.removeChild(f.lastChild);
   }
 
-  function flash(deny){
-    var f=el("flash"); f.className="flash show"+(deny?" deny":"");
+  function why(r,t){
+    var w=el("why");
+    w.innerHTML='<div class="hd">Last decision — why · key '+curkey+'</div>'+
+      '<span class="'+(r.allowed?"ok":"no")+'">'+(r.allowed?"ALLOWED":"DENIED")+'</span> · '+r.why;
+  }
+
+  function flash(deny,adaptive){
+    var f=el(adaptive?"adflash":"flash");
+    f.className="flash show"+(deny?" deny":"");
     setTimeout(function(){ f.className="flash"+(deny?" deny":""); },180);
   }
 
@@ -354,14 +471,14 @@
     var dt=(t-lastTick)/1000; lastTick=t;
     autoAccum += dt * (+el("rps").value);
     while(autoAccum>=1){ autoAccum-=1; fire(); }
-    if(autoTimer!==null) requestAnimationFrame(loop);
-    // refresh RPS stat from hist (last 1s)
     var cut=t-1000, c=0; for(var i=hist.length-1;i>=0;i--){ if(hist[i].t>=cut) c++; else break; }
     el("s-rps").textContent=c;
-    // age out old perSec
     var s=curSec(t)-30; Object.keys(perSec).forEach(function(k){ if(+k<s) delete perSec[k]; });
     drawChart();
     if(algo==="slidingwindow") paintWindow();
+    // adaptive: keep token level ticking even while idle (refill at effRate)
+    if(algo==="adaptive"){ var S=st(), p=policy(); if(S.ad.last!=null){ var adt=(t-S.ad.last)/1000; if(adt>0){ S.ad.tokens=Math.min(p.cap,S.ad.tokens+adt*S.ad.effRate); S.ad.last=t; paint(); } } }
+    if(autoTimer!==null) requestAnimationFrame(loop);
   }
   function autoStart(){ if(autoTimer!==null) return; autoTimer=requestAnimationFrame(loop);
     el("auto").textContent="⏸ Stop"; el("auto").className="btn sm stop"; }
@@ -370,42 +487,60 @@
 
   // ---------- reset ----------
   function reset(){
-    autoStop(); tb={tokens:+el("cap").value,last:null}; sw=[]; stats={total:0,ok:0,no:0}; hist=[]; perSec=[];
-    el("feed").innerHTML='<div style="color:var(--mut)">Decisions will appear here…</div>'; paint();
+    autoStop();
+    delete states[curkey]; states[curkey]=freshState();
+    hist=[]; perSec=[];
+    el("feed").innerHTML='<div style="color:var(--mut)">Decisions will appear here…</div>';
+    el("why").innerHTML='<div class="hd">Last decision — why</div><span style="color:var(--mut)">Fire a request to see the algorithm\'s reasoning.</span>';
+    paint();
+  }
+
+  // ---------- presets ----------
+  function preset(name){
+    var setSlider=function(id,val,vlabel,fmt){ el(id).value=val; if(vlabel) el(vlabel).textContent=fmt?fmt(val):val; };
+    if(name==="burst"){ setSlider("cap",5,"cap-v"); setSlider("ref",10,"ref-v",function(v){return (v/10).toFixed(1);}); setSlider("rps",20,"rps-v"); }
+    else if(name==="steady"){ setSlider("cap",20,"cap-v"); setSlider("ref",100,"ref-v",function(v){return (v/10).toFixed(1);}); setSlider("rps",8,"rps-v"); }
+    else if(name==="overload"){ setSlider("cap",10,"cap-v"); setSlider("ref",30,"ref-v",function(v){return (v/10).toFixed(1);}); setSlider("rps",30,"rps-v"); }
+    // also align adaptive sliders so presets work there too
+    setSlider("adcap", el("cap").value, "adcap-v");
+    setSlider("adref", el("ref").value, "adref-v", function(v){return (v/10).toFixed(1);});
+    reset(); snippets(); autoStart();
   }
 
   // ---------- code + curl snippets ----------
   function snippets(){
     var p=policy();
     if(p.algo==="tokenbucket"){
-      el("code").innerHTML =
-'<span class="c">// token bucket — internal/algorithms/tokenbucket.go (simplified)</span>\n'+
+      el("code").innerHTML='<span class="c">// token bucket — internal/algorithms/tokenbucket.go (simplified)</span>\n'+
 '<span class="k">func</span> Check(cap <span class="k">float64</span>, refill <span class="k">float64</span>) Decision {\n'+
-'  elapsed = now - last\n'+
-'  tokens = min(cap, tokens + elapsed*refill)  <span class="c">// refill</span>\n'+
-'  last = now\n'+
+'  tokens = min(cap, tokens + elapsed*refill)\n'+
 '  <span class="k">if</span> tokens &gt;= 1 { tokens -= 1; <span class="k">return</span> Allowed(remaining=tokens) }\n'+
-'  <span class="k">return</span> Denied(retryAfter=(1-tokens)/refill)\n'+
-'}';
-      el("curl").innerHTML =
-'<span class="c"># POST /v1/check  (REST) — equivalent gRPC: RateGateService.CheckRateLimit</span>\n'+
-'curl -sX POST localhost:8080/v1/check \\\n'+
-'  -H <span class="s">"content-type: application/json"</span> \\\n'+
-'  -d <span class="s">\'{"key":"user:42","algorithm":"tokenbucket","limit":'+p.cap+',"refill_per_second":'+p.ref.toFixed(1)+'}\'</span>';
-    } else {
-      el("code").innerHTML =
-'<span class="c">// sliding window (exact) — internal/algorithms/slidingwindow.go (simplified)</span>\n'+
+'  <span class="k">return</span> Denied(retryAfter=(1-tokens)/refill)\n}';
+      el("curl").innerHTML='<span class="c"># POST /v1/check  (REST) — equivalent gRPC: RateGateService.CheckRateLimit</span>\n'+
+'curl -sX POST localhost:8080/v1/check \\\n  -H <span class="s">"content-type: application/json"</span> \\\n'+
+'  -d <span class="s">\'{"key":"'+curkey+'","algorithm":"tokenbucket","limit":'+p.cap+',"refill_per_second":'+p.ref.toFixed(1)+'}\'</span>';
+    } else if(p.algo==="slidingwindow"){
+      el("code").innerHTML='<span class="c">// sliding window (exact) — internal/algorithms/slidingwindow.go (simplified)</span>\n'+
 '<span class="k">func</span> Check(limit <span class="k">int</span>, window <span class="k">Duration</span>) Decision {\n'+
 '  drop timestamps older than now-window\n'+
 '  <span class="k">if</span> len(window) &lt; limit { add(now); <span class="k">return</span> Allowed(remaining=limit-len) }\n'+
-'  <span class="k">return</span> Denied(retryAfter=oldest+window-now)\n'+
-'}';
-      el("curl").innerHTML =
-'<span class="c"># POST /v1/check</span>\n'+
-'curl -sX POST localhost:8080/v1/check \\\n'+
-'  -H <span class="s">"content-type: application/json"</span> \\\n'+
-'  -d <span class="s">\'{"key":"user:42","algorithm":"slidingwindow","limit":'+p.limit+',"window_ms":'+(p.windowMs)+'}\'</span>';
+'  <span class="k">return</span> Denied(retryAfter=oldest+window-now)\n}';
+      el("curl").innerHTML='<span class="c"># POST /v1/check</span>\n'+
+'curl -sX POST localhost:8080/v1/check \\\n  -H <span class="s">"content-type: application/json"</span> \\\n'+
+'  -d <span class="s">\'{"key":"'+curkey+'","algorithm":"slidingwindow","limit":'+p.limit+',"window_ms":'+p.windowMs+'}\'</span>';
+    } else {
+      el("code").innerHTML='<span class="c">// adaptive — internal/algorithms/adaptive.go (simplified)</span>\n'+
+'<span class="k">func</span> Check(cap <span class="k">float64</span>, base <span class="k">float64</span>) Decision {\n'+
+'  tokens = min(cap, tokens + elapsed*effRate)\n'+
+'  <span class="k">if</span> tokens &gt;= 1 { tokens -= 1; <span class="k">return</span> Allowed() }\n'+
+'  <span class="k">return</span> Denied()\n  // every ~10 reqs: if denyRate&gt;.4 effRate*=0.8 (backoff)\n'+
+'  //              if denyRate&lt;.1 effRate*=1.1 (recover, capped at 1.3*base)\n}';
+      el("curl").innerHTML='<span class="c"># POST /v1/check — adaptive auto-tunes under load</span>\n'+
+'curl -sX POST localhost:8080/v1/check \\\n  -H <span class="s">"content-type: application/json"</span> \\\n'+
+'  -d <span class="s">\'{"key":"'+curkey+'","algorithm":"adaptive","limit":'+p.cap+',"refill_per_second":'+p.ref.toFixed(1)+'}\'</span>';
     }
+    // update the quickstart curl with the current key too
+    el("curlcmd").textContent='curl -sX POST localhost:8080/v1/check \\\n  -H "content-type: application/json" \\\n  -d \'{"key":"'+curkey+'","algorithm":"'+p.algo+'",\n       "limit":'+(p.cap||p.limit)+',"refill_per_second":'+p.ref.toFixed(1)+'}\'';
   }
 
   // ---------- algo switch ----------
@@ -414,36 +549,68 @@
     Array.prototype.forEach.call(el("tabs").children,function(b){ b.className = b.dataset.algo===a?"on":""; });
     el("tb-ctrl").style.display = a==="tokenbucket"?"block":"none";
     el("sw-ctrl").style.display = a==="slidingwindow"?"block":"none";
+    el("ad-ctrl").style.display = a==="adaptive"?"block":"none";
     el("tb-viz").style.display = a==="tokenbucket"?"block":"none";
     el("sw-viz").style.display = a==="slidingwindow"?"block":"none";
+    el("ad-viz").style.display = a==="adaptive"?"block":"none";
+    el("adgauge").style.display = a==="adaptive"?"block":"none";
+    el("captn").textContent = CAPTIONS[a];
     reset(); snippets();
+  }
+
+  // ---------- key switch ----------
+  function setKey(k){
+    k = k.trim() || "user:42";
+    if(k===curkey) return;
+    curkey=k;
+    hist=[]; perSec=[];
+    el("feed").innerHTML='<div style="color:var(--mut)">Decisions will appear here…</div>';
+    el("why").innerHTML='<div class="hd">Last decision — why</div><span style="color:var(--mut)">Switched to key '+curkey+' — fresh state.</span>';
+    paint(); snippets();
   }
 
   // ---------- wire up ----------
   Array.prototype.forEach.call(el("tabs").children,function(b){
     b.addEventListener("click",function(){ setAlgo(b.dataset.algo); });
   });
-  el("cap").oninput=function(){ el("cap-v").textContent=this.value; tb.tokens=Math.min(tb.tokens,+this.value); paint(); snippets(); };
+  Array.prototype.forEach.call(document.querySelectorAll(".presets button"),function(b){
+    b.addEventListener("click",function(){ preset(b.dataset.preset); });
+  });
+  el("cap").oninput=function(){ el("cap-v").textContent=this.value; var s=st(); s.tb.tokens=Math.min(s.tb.tokens,+this.value); paint(); snippets(); };
   el("ref").oninput=function(){ el("ref-v").textContent=((+this.value)/10).toFixed(1); paint(); snippets(); };
   el("lim").oninput=function(){ el("lim-v").textContent=this.value; paint(); snippets(); };
   el("win").oninput=function(){ el("win-v").textContent=((+this.value)/10).toFixed(1); paint(); snippets(); };
+  el("adcap").oninput=function(){ el("adcap-v").textContent=this.value; var s=st(); s.ad.tokens=Math.min(s.ad.tokens,+this.value); paint(); snippets(); };
+  el("adref").oninput=function(){ el("adref-v").textContent=((+this.value)/10).toFixed(1); paint(); snippets(); };
   el("rps").oninput=function(){ el("rps-v").textContent=this.value; };
+  el("key").addEventListener("change",function(){ setKey(this.value); });
   el("send").addEventListener("click",fire);
   el("auto").addEventListener("click",function(){ autoTimer===null?autoStart():autoStop(); });
   el("reset").addEventListener("click",reset);
+  Array.prototype.forEach.call(document.querySelectorAll(".copybtn"),function(b){
+    b.addEventListener("click",function(){
+      var txt=el(b.dataset.copy).textContent;
+      navigator.clipboard.writeText(txt).then(function(){
+        b.textContent="copied!"; b.className="copybtn done";
+        setTimeout(function(){ b.textContent="copy"; b.className="copybtn"; },1400);
+      });
+    });
+  });
 
   // keep bucket viz ticking for refill even when idle
-  function idle(t){ if(algo==="tokenbucket" && tb.last!=null && autoTimer===null){
-    var p=policy(); var dt=(t-tb.last)/1000; if(dt>0){ tb.tokens=Math.min(p.cap,tb.tokens+dt*p.ref); tb.last=t; paint(); } }
+  function idle(t){
+    if(autoTimer===null){
+      if(algo==="tokenbucket"){ var s=st(), p=policy(); if(s.tb.last!=null){ var dt=(t-s.tb.last)/1000; if(dt>0){ s.tb.tokens=Math.min(p.cap,s.tb.tokens+dt*p.ref); s.tb.last=t; paint(); } } }
+      else if(algo==="adaptive"){ var S=st(), P=policy(); if(S.ad.last!=null){ var adt=(t-S.ad.last)/1000; if(adt>0){ S.ad.tokens=Math.min(P.cap,S.ad.tokens+adt*S.ad.effRate); S.ad.last=t; paint(); } } }
+    }
     requestAnimationFrame(idle);
   }
 
   // init
-  el("ref-v").textContent="2.0"; el("win-v").textContent="10.0";
+  el("ref-v").textContent="2.0"; el("win-v").textContent="10.0"; el("adref-v").textContent="2.0";
   setAlgo("tokenbucket");
   requestAnimationFrame(idle);
-  // one demo decision so the feed isn't empty
-  setTimeout(fire,400);
+  setTimeout(fire,500);
 })();
 </script>
 </body>
