@@ -5,6 +5,7 @@
 <p align="center">
   <a href="https://github.com/Abolfazlrwm/rategate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Abolfazlrwm/rategate/ci.yml?branch=main&logo=github&label=CI"></a>
   <a href="https://goreportcard.com/report/github.com/Abolfazlrwm/rategate"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/Abolfazlrwm/rategate"></a>
+  <a href="https://codecov.io/gh/Abolfazlrwm/rategate"><img alt="Coverage" src="https://codecov.io/gh/Abolfazlrwm/rategate/branch/main/graph/badge.svg"></a>
   <a href="https://pkg.go.dev/github.com/Abolfazlrwm/rategate"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/Abolfazlrwm/rategate.svg"></a>
   <img alt="License" src="https://img.shields.io/github/license/Abolfazlrwm/rategate?color=blue">
   <img alt="Go Version" src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white">

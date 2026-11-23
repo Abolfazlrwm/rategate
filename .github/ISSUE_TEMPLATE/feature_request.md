@@ -17,4 +17,4 @@ labels: enhancement
 ## Alternatives considered
 
 ## Phase fit
-<!-- Phase 1 (current) or Phase 2 (post-v1.0)? -->
+<!-- Which release does this target? v0.2.x (current) or the v0.3.0 roadmap? -->
