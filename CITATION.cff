@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use RateGate in your research or software, please cite it."
+title: "RateGate: a distributed rate limiter for Go"
+type: software
+authors:
+  - alias: Abolfazlrwm
+repository-code: "https://github.com/Abolfazlrwm/rategate"
+url: "https://abolfazlrwm.github.io/rategate/"
+license: Apache-2.0
+version: "0.2.1"
+date-released: "2025-11-23"
+keywords:
+  - rate-limiting
+  - rate-limiter
+  - token-bucket
+  - sliding-window
+  - aimd
+  - go
+  - distributed
+  - redis
+  - grpc

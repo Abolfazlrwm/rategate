@@ -1,33 +1,43 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="RateGate" width="720" />
+  <img src="docs/assets/banner.svg" alt="RateGate — distributed rate limiting for Go" width="820" />
+</p>
+
+<p align="center">
+  <strong>Rate limiting you can watch work.</strong><br/>
+  A production-grade, distributed rate-limiter for Go — token bucket, sliding window, and adaptive (AIMD) — over gRPC and REST, in-memory or Redis/Cluster.
 </p>
 
 <p align="center">
   <a href="https://github.com/Abolfazlrwm/rategate/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/Abolfazlrwm/rategate/ci.yml?branch=main&logo=github&label=CI"></a>
   <a href="https://goreportcard.com/report/github.com/Abolfazlrwm/rategate"><img alt="Go Report Card" src="https://goreportcard.com/badge/github.com/Abolfazlrwm/rategate"></a>
   <a href="https://codecov.io/gh/Abolfazlrwm/rategate"><img alt="Coverage" src="https://codecov.io/gh/Abolfazlrwm/rategate/branch/main/graph/badge.svg"></a>
+  <a href="https://github.com/Abolfazlrwm/rategate/releases"><img alt="Release" src="https://img.shields.io/github/v/release/Abolfazlrwm/rategate?logo=github&color=22d3ee"></a>
   <a href="https://pkg.go.dev/github.com/Abolfazlrwm/rategate"><img alt="Go Reference" src="https://pkg.go.dev/badge/github.com/Abolfazlrwm/rategate.svg"></a>
   <img alt="License" src="https://img.shields.io/github/license/Abolfazlrwm/rategate?color=blue">
   <img alt="Go Version" src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white">
+  <a href="https://github.com/Abolfazlrwm/rategate/discussions"><img alt="Discussions" src="https://img.shields.io/github/discussions/Abolfazlrwm/rategate?logo=github"></a>
   <a href="https://github.com/Abolfazlrwm/rategate/stargazers"><img alt="stars" src="https://img.shields.io/github/stars/Abolfazlrwm/rategate?style=social"></a>
-  <a href="https://abolfazlrwm.github.io/rategate/"><img alt="Live Demo" src="https://img.shields.io/badge/%E2%96%B6-live_demo-22d3ee"></a>
+  <a href="https://abolfazlrwm.github.io/rategate/"><img alt="Live Demo" src="https://img.shields.io/badge/%E2%96%B6-live_demo-22d3ee?logo=githubpages&logoColor=white"></a>
+</p>
+
+<p align="center">
+  Read this in: <a href="README.md">English</a> · <a href="README.fa.md">فارسی</a>
 </p>
 
 ---
 
-RateGate is a production-grade, distributed rate-limiter service written in
-Go. It runs as a sidecar or gateway middleware, exposes a gRPC service and a
-REST API, and supports token-bucket, sliding-window, and adaptive (AIMD)
-algorithms backed by an in-process memory store, single-node Redis, or Redis
-Cluster (all atomic via Lua scripts). Policies are managed at runtime through
-a thread-safe admin REST API — no restart needed to add or change a limit.
-
 > ▶ **Try it live:** the [in-browser playground](https://abolfazlrwm.github.io/rategate/)
-> simulates the *exact* token-bucket and sliding-window algorithms the server
-> runs — tune a policy, hammer it with auto-fire, and watch each request
-> admitted or denied in real time. No backend, no signup.
+> runs a *faithful port* of the server's token-bucket, sliding-window, and
+> adaptive algorithms in your browser — tune a policy, fire bursts, and watch
+> each request admitted or denied in real time. No backend, no signup.
 
-> **Headline:** 120k+ RPS on a single laptop with p99 < 5ms (in-memory token
+<p align="center">
+  <a href="https://abolfazlrwm.github.io/rategate/">
+    <img src="docs/assets/screenshot.png" alt="The RateGate live playground — gate particle field, liquid bucket, window strip, AIMD meter and traffic chart" width="820" />
+  </a>
+</p>
+
+> **Headline:** 120k+ RPS on a single laptop with p99 < 5 ms (in-memory token
 > bucket). See [docs/benchmarks.md](docs/benchmarks.md) for methodology and
 > the full table.
 
@@ -51,6 +61,34 @@ correct, fast option you can run yourself:
 - **Hardened.** 100% test coverage on `internal/algorithms` and
   `internal/store` (enforced in CI), race detector green, `golangci-lint`
   strict, no unrecovered panics in request paths.
+
+## How it compares
+
+| | Redis `INCR` hack | SaaS rate limiter | Generic Go limiter lib | **RateGate** |
+| --- | :---: | :---: | :---: | :---: |
+| Self-hosted, no vendor lock-in | ✅ | ❌ paid & hosted | ✅ | ✅ |
+| Works with no Redis (in-memory) | ❌ | — | varies | ✅ |
+| Atomic under concurrency | ❌ read-then-write race | ✅ | varies | ✅ sharded mutex / Lua `EVAL` |
+| Adaptive (AIMD, demand-aware) | ❌ | rare | ❌ | ✅ |
+| gRPC + REST *service*, not just a lib | ❌ | ✅ | ❌ in-process only | ✅ |
+| Runtime admin API (no restart) | ❌ | varies | ❌ | ✅ |
+| Redis Cluster | manual | varies | varies | ✅ single-key Lua reuse |
+| Drop-in Gin / stdlib middleware | DIY | varies | varies | ✅ |
+| Language-agnostic (any client) | ✅ | ✅ | Go only | ✅ gRPC + REST |
+| License | — | proprietary | varies | Apache-2.0 |
+
+> Cells for third-party options are intentionally conservative ("varies")
+> because each project differs; check the upstream docs before you commit.
+
+## Highlights
+
+- 🚪 **Three real algorithms** — token bucket, sliding window (exact + approximate ring), and adaptive AIMD, all on BigInt nanoseconds with lazy refill.
+- 🧱 **Three stores** — in-process memory (sharded mutex), single-node Redis, and Redis Cluster, all behind one `Store.Check` contract.
+- 🛰️ **Two transports** — gRPC (`CheckRateLimit`) and REST (`/v1/check`), plus a thread-safe admin API for policy CRUD at runtime.
+- 🔌 **Drop-in middleware** — `GinMiddleware` and `StdlibMiddleware`, plus a Go client SDK (HTTP + gRPC).
+- 📊 **Observable by default** — Prometheus `/metrics`, OpenTelemetry traces, structured `slog` logs, `X-RateLimit-*` headers on every response.
+- 🐳 **One-command deploys** — multi-arch distroless GHCR image, Kubernetes manifests, docker-compose with Redis + Prometheus.
+- 🧪 **Verified in CI** — race detector, 100% coverage on core packages, `golangci-lint` strict, per-PR `benchstat` diffs.
 
 ## Architecture at a glance
 
@@ -96,27 +134,33 @@ loopback Redis the same workload holds p99 < 5ms.
 
 ## Quickstart
 
-### Option A — standalone binary, in-memory store
+### Option A — Docker, in-memory store (fastest)
 
 ```bash
-git clone https://github.com/Abolfazlrwm/rategate
-cd rategate
-make build
-./bin/rategate-server --store=memory
+docker run --rm -p 8080:8080 -p 9090:9090 \
+  -e RATEGATE_STORE_BACKEND=memory \
+  ghcr.io/abolfazlrwm/rategate:latest
 
-# in another terminal:
 curl -s localhost:8080/healthz
 curl -s -X POST localhost:8080/v1/check \
   -H 'content-type: application/json' \
   -d '{"key":"user:1","algorithm":"tokenbucket","limit":5,"refill_per_second":1}'
 ```
 
-### Option B — Redis-backed, via Docker Compose
+### Option B — standalone binary
+
+```bash
+git clone https://github.com/Abolfazlrwm/rategate
+cd rategate
+make build
+./bin/rategate-server --store=memory
+```
+
+### Option C — Redis-backed, via Docker Compose
 
 ```bash
 docker compose -f deployments/docker/docker-compose.yml up --build
-
-# the server is reachable on :8080 (REST) and :9090 (gRPC), Redis on :6379.
+# server on :8080 (REST) and :9090 (gRPC), Redis on :6379
 curl -s -X POST localhost:8080/v1/check \
   -H 'content-type: application/json' \
   -d '{"key":"user:1","limit_name":"default"}'
@@ -157,7 +201,7 @@ Responses carry `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and
 See [`examples/`](examples/) for the Gin middleware, a standalone embedded
 server, and the client SDK in action.
 
-## Features
+## Feature matrix
 
 | | v0.1.0 | v0.2.0 (Phase 2) | v0.2.1 (Phase 3 hardening) |
 | --- | --- | --- | --- |
@@ -258,15 +302,35 @@ docker run --rm -p 8080:8080 -p 9090:9090 \
 ## Documentation
 
 - **[Live demo](https://abolfazlrwm.github.io/rategate/)** — interactive in-browser rate-limiter playground
-- [Architecture](docs/architecture.md)
-- [Benchmarks](docs/benchmarks.md)
-- [API reference](docs/api-reference.md)
+- [Architecture](docs/architecture.md) · [Benchmarks](docs/benchmarks.md) · [API reference](docs/api-reference.md)
 - [ADR-0001: why token bucket is the default](docs/adr/0001-why-token-bucket-default.md)
 - [ADR-0002: Redis Lua scripts for atomicity](docs/adr/0002-redis-lua-scripts.md)
 - [ADR-0003: Redis Cluster via single-key Lua reuse](docs/adr/0003-redis-cluster-single-key-lua.md)
 - [ADR-0004: adaptive (AIMD) limiter — demand-aware, not congestion-response](docs/adr/0004-adaptive-aimd-limiter.md)
 - [Examples](examples/)
 
+## Contributing
+
+Pull requests are welcome. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first
+(development setup, commit style, the 100%-coverage gate) and the
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md). Vulnerabilities are handled
+privately per [`SECURITY.md`](SECURITY.md). For design questions and ideas,
+use [GitHub Discussions](https://github.com/Abolfazlrwm/rategate/discussions).
+
+If RateGate is useful to you, please ⭐ the repo — it helps others find it and
+tells us where to invest next.
+
+## Built with
+
+[Go](https://go.dev/) · [Gin](https://gin-gonic.com/) · [go-redis](https://github.com/redis/go-redis) ·
+[Prometheus](https://prometheus.io/) · [OpenTelemetry](https://opentelemetry.io/) · [Viper](https://github.com/spf13/viper) ·
+[gRPC](https://grpc.io/) · [miniredis](https://github.com/alicebob/miniredis) (tests) ·
+[Inter](https://rsms.me/inter/) & [JetBrains Mono](https://www.jetbrains.com/lp/mono/) (playground).
+
 ## License
 
 [Apache-2.0](LICENSE). Copyright 2025 Abolfazlrwm and the RateGate contributors.
+
+---
+
+<sub>Suggested GitHub topics: <code>go</code> · <code>rate-limiter</code> · <code>rate-limiting</code> · <code>token-bucket</code> · <code>sliding-window</code> · <code>aimd</code> · <code>distributed</code> · <code>redis</code> · <code>grpc</code> · <code>middleware</code> · <code>gateway</code> · <code>rate-limit</code></sub>

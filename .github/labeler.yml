@@ -1,0 +1,32 @@
+# Auto-labels PRs by the paths they touch. Labels must exist in the repo
+# (Settings → Labels); create them once and labeler will apply them.
+algorithms:
+  - changed-files:
+      - anyGlobToAll: ["internal/algorithms/**"]
+store:
+  - changed-files:
+      - anyGlobToAll: ["internal/store/**"]
+server:
+  - changed-files:
+      - anyGlobToAll: ["internal/server/**", "internal/admin/**", "cmd/**", "api/**"]
+client:
+  - changed-files:
+      - anyGlobToAll: ["pkg/**"]
+observability:
+  - changed-files:
+      - anyGlobToAll: ["internal/observability/**"]
+docs:
+  - changed-files:
+      - anyGlobToAll: ["docs/**", "*.md", "README.fa.md"]
+ci:
+  - changed-files:
+      - anyGlobToAll: [".github/**", "Makefile", ".golangci.yml", ".goreleaser.yml"]
+dependencies:
+  - changed-files:
+      - anyGlobToAll: ["go.mod", "go.sum"]
+deployment:
+  - changed-files:
+      - anyGlobToAll: ["deployments/**", "Dockerfile", ".dockerignore"]
+playground:
+  - changed-files:
+      - anyGlobToAll: ["docs/assets/**", "docs/index.html"]

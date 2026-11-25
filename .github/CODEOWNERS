@@ -1,0 +1,16 @@
+# Code owners for RateGate.
+# Default: every path requires review from the maintainer.
+* @Abolfazlrwm
+
+# Area-specific routing — keeps the right reviewer on the right diff.
+# Today these all map to the same maintainer; add collaborators per area as
+# the project grows.
+/cmd/                  @Abolfazlrwm
+/internal/algorithms/  @Abolfazlrwm
+/internal/store/       @Abolfazlrwm
+/internal/server/      @Abolfazlrwm
+/internal/admin/       @Abolfazlrwm
+/api/proto/            @Abolfazlrwm
+/pkg/                  @Abolfazlrwm
+/docs/                 @Abolfazlrwm
+/.github/              @Abolfazlrwm

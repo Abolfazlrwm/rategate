@@ -1,0 +1,24 @@
+# Keep the Docker build context lean. The Dockerfile (deployments/docker/Dockerfile)
+# runs `COPY . .` from the repo root, so only Go source + module files are needed.
+.git
+.github
+.gitignore
+.editorconfig
+**/*.md
+docs/
+examples/
+benchmarks/
+scripts/
+bin/
+coverage.out
+coverage-summary.txt
+*.tar.gz
+*.zip
+*.svg
+*.png
+# Build tooling not needed inside the image
+Makefile
+.golangci.yml
+.goreleaser.yml
+# Deploy manifests are not part of the binary
+deployments/

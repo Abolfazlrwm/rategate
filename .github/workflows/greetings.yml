@@ -1,0 +1,28 @@
+name: greetings
+on:
+  pull_request:
+    types: [opened]
+  issues:
+    types: [opened]
+permissions:
+  pull-requests: write
+  issues: write
+jobs:
+  greeting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          issue-message: |
+            Thanks for opening your first issue in RateGate! A maintainer will
+            take a look soon. While you wait, the
+            [live playground](https://abolfazlrwm.github.io/rategate/) and
+            [CONTRIBUTING.md](https://github.com/Abolfazlrwm/rategate/blob/main/CONTRIBUTING.md)
+            are good places to start.
+          pr-message: |
+            Thanks for your first pull request to RateGate! CI runs race tests,
+            100% coverage on `internal/algorithms` and `internal/store`, and
+            `golangci-lint` on every PR — see
+            [CONTRIBUTING.md](https://github.com/Abolfazlrwm/rategate/blob/main/CONTRIBUTING.md)
+            for the full pre-merge gate.
