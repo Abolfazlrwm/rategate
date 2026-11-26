@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned (Phase 3)
+- Per-tenant quotas with serial enforcement (multi-tenancy).
+- gRPC streaming for live rate-limit decision observation.
+- Congestion-response adaptive limiting (downstream latency feedback via
+  an `Algorithm.Record` completion hook — see ADR-0004 scope note).
+- HCL-based policy configuration.
+- WASM filter for Envoy.
+- Head-to-head benchmarks against Stripe, Cloudflare, Upstash.
+
+## [0.2.2] - 2026-11-26
+
+### Fixed
+- **Rate-limit bypass via the janitor (security-relevant).** Both the
+  sliding-window (exact mode) and the adaptive limiters keyed the `Sweep` idle
+  check off a stamp that was not refreshed on every `Check`: `lastRotate` stayed
+  at state creation (sliding-window), and `windowStart` only advanced on window
+  rollover (adaptive; the doc claimed otherwise). An actively-used key could be
+  evicted while still receiving traffic, and the next `Check` then rebuilt a
+  fresh window (count 0) / reset the adaptive limit to the floor and counters to
+  zero — letting traffic through that should have been denied. Fixed by stamping
+  activity on every `Check` (`lastRotate` / a new `lastSeen`) and keying `Sweep`
+  off it. The approximate sliding-window path already advanced `lastDecay` per
+  `Check`, so it was already correct.
+- **SDK lost rate-limit metadata on a 429.** The HTTP client treated every
+  `>=400` status the same way: it read only the body's `error` string and
+  returned an `*HTTPError`, discarding the structured decision (`remaining`,
+  `limit`, `retry_after_ms`, `reset_at_unix_ms`) and never reading the
+  `Retry-After` header (it was only read on the success path, where it never
+  appears). Callers could tell a request was denied (`IsDenied`) but could not
+  honour the backoff. The `*HTTPError` for a 429 now carries `Remaining`,
+  `Limit`, `ResetAtUnixMs` and `RetryAfterMs` (the `Retry-After` header takes
+  precedence over the body, matching the success path). The usage example now
+  prints the real backoff instead of always 0.
+- **Docs.** `docs/architecture.md` refreshed to reflect the shipped adaptive
+  (AIMD) limiter, the Redis Cluster backend (`ClusterStore`), and the Go SDK
+  (`pkg/client`) / middleware (`pkg/middleware`); the stale "Phase 2 wires Echo
+  and Fiber" claim and the "adaptive is future" bullet were corrected.
+
+## [0.2.1] - 2026-11-19
+
 ### Added
 - Configurable store failure mode: `store.fail_open` (default `false`). When
   the backing store errors (e.g. Redis unreachable), the default (fail-closed)
@@ -41,15 +81,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Health and reflection remain public. Previously a gRPC client could call
   `CheckRateLimit` / `AdminService` with no credential even when REST auth was
   enabled.
-
-### Planned (Phase 3)
-- Per-tenant quotas with serial enforcement (multi-tenancy).
-- gRPC streaming for live rate-limit decision observation.
-- Congestion-response adaptive limiting (downstream latency feedback via
-  an `Algorithm.Record` completion hook — see ADR-0004 scope note).
-- HCL-based policy configuration.
-- WASM filter for Envoy.
-- Head-to-head benchmarks against Stripe, Cloudflare, Upstash.
 
 ## [0.2.0] - 2026-11-16
 
