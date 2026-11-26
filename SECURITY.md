@@ -30,14 +30,16 @@ Please include:
 
 ## Supported Versions
 
-Only the **latest minor release** on the `main` branch receives security fixes.
-When a new minor is cut, the previous minor stops receiving fixes. Pin to a
-specific patch version in production and watch releases for security advisories.
+The current development line on `main` and the most recent tagged release
+receive security fixes. Older lines require an upgrade. Pin to a specific
+patch version in production and watch [releases](https://github.com/Abolfazlrwm/rategate/releases)
+and [security advisories](https://github.com/Abolfazlrwm/rategate/security/advisories).
 
-| Version | Supported |
-| ------- | --------- |
-| latest minor (`0.x`) | ✅ |
-| older minors | ❌ |
+| Version | Supported | Notes |
+| ------- | :-------: | ---- |
+| `0.2.x` (`main` + upcoming tag) | ✅ | current development line |
+| `0.1.0` | ✅ | last tagged release; fixes backported when feasible |
+| `< 0.1.0` | ❌ | upgrade required |
 
 ## Scope
 
