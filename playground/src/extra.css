@@ -1,0 +1,119 @@
+
+/* ------------------------------------------------------------------
+   16. bits the script needs
+   ------------------------------------------------------------------ */
+
+/* the icon sprite is 0x0 but must not take layout space */
+.sprite {
+  position: absolute;
+  overflow: hidden;
+}
+
+/* token bucket: the number sits on the left, the liquid on the right */
+.viz.tb .viz-overlay {
+  right: auto;
+  width: 150px;
+}
+
+.viz.tb .viz-overlay .v-main small {
+  display: block;
+  margin: 4px 0 0;
+}
+
+.viz.tb .viz-overlay .v-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+/* the keys table before the first request */
+.keys tr.none {
+  cursor: default;
+}
+
+.keys tr.none td {
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 12.5px;
+}
+
+/* chart tooltip: one value per line */
+.arr {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+.tip b,
+.tip span {
+  display: block;
+}
+
+.tip b {
+  margin-bottom: 2px;
+}
+
+.chart canvas {
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+
+/* benchmark bars, width = throughput relative to the fastest row (25.0M/s) */
+.bench .bar i.b1 { width: 97.1%; }
+.bench .bar i.b2 { width: 90.8%; }
+.bench .bar i.b3 { width: 74.0%; }
+.bench .bar i.b4 { width: 89.1%; }
+.bench .bar i.b5 { width: 8.7%; }
+
+/* the simulation toolbar wraps on small screens instead of pushing the
+   page horizontally (the clock alone is ~160px wide) */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 6px 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* at 320px even one chip is wider than the viewport: let its text wrap */
+@media (max-width: 379px) {
+  .chip {
+    white-space: normal;
+  }
+}
+
+/* narrow screens: the algorithm tabs drop their icons and tighten so the
+   three full labels fit the viewport */
+@media (max-width: 639px) {
+  #algoTabs button svg {
+    display: none;
+  }
+
+  #algoTabs button {
+    padding: 0 10px;
+    font-size: 12px;
+  }
+}
+
+/* long identifiers in feature lists may break a line instead of pushing
+   the page horizontally */
+li code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* the hero snippet wraps instead of truncating the docker command mid-token */
+.snippet code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+
+
+

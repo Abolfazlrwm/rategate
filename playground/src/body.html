@@ -1,0 +1,798 @@
+<a class="skip" href="#playground">Skip to the playground</a>
+
+<!-- icon sprite: every symbol is drawn with the current text colour -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+
+    <symbol id="i-mark" viewBox="0 0 60 60">
+      <rect x="3" y="3" width="54" height="54" rx="12" fill="none" stroke="url(#g-brand)" stroke-width="3"/>
+      <rect x="12" y="12" width="36" height="36" rx="7" fill="url(#g-brand)" opacity="0.18"/>
+      <path d="M18 30h24M30 18v24" fill="none" stroke="url(#g-brand)" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="30" cy="30" r="4" fill="#f8fafc"/>
+    </symbol>
+
+    <symbol id="i-github" viewBox="0 0 16 16">
+      <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
+    </symbol>
+
+    <symbol id="i-play" viewBox="0 0 24 24">
+      <path fill="currentColor" d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/>
+    </symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24">
+      <rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/>
+      <rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+      </g>
+    </symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </g>
+    </symbol>
+    <symbol id="i-link" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </g>
+    </symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <polyline points="12 5 19 12 12 19"/>
+      </g>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-star" viewBox="0 0 24 24">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-external" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+        <polyline points="15 3 21 3 21 9"/>
+        <line x1="10" y1="14" x2="21" y2="3"/>
+      </g>
+    </symbol>
+
+    <!-- algorithm glyphs -->
+    <symbol id="i-bucket" viewBox="0 0 16 16">
+      <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3.5h10l-1.1 8.2a2 2 0 0 1-2 1.8H6.1a2 2 0 0 1-2-1.8z"/>
+        <path d="M4.2 8.6h7.6"/>
+      </g>
+    </symbol>
+    <symbol id="i-window" viewBox="0 0 16 16">
+      <g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round">
+        <rect x="1.5" y="4.5" width="8.5" height="7" rx="1.5"/>
+        <rect x="6" y="4.5" width="8.5" height="7" rx="1.5" opacity="0.6"/>
+      </g>
+    </symbol>
+    <symbol id="i-aimd" viewBox="0 0 16 16">
+      <path d="M2 13h3.4V9.2H8.7V5.4h5.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+
+    <!-- traffic shapes -->
+    <symbol id="i-sh-steady" viewBox="0 0 48 16" preserveAspectRatio="none">
+      <path d="M1 9h46" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="i-sh-burst" viewBox="0 0 48 16" preserveAspectRatio="none">
+      <path d="M1 12h7V3h5v9h36" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-sh-ramp" viewBox="0 0 48 16" preserveAspectRatio="none">
+      <path d="M1 13L47 3M47 3v10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-sh-wave" viewBox="0 0 48 16" preserveAspectRatio="none">
+      <path d="M1 8c4-9 9-9 13 0s9 9 13 0 9-9 13 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- feature icons -->
+    <symbol id="i-layers" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+        <polyline points="2 17 12 22 22 17"/>
+        <polyline points="2 12 12 17 22 12"/>
+      </g>
+    </symbol>
+    <symbol id="i-database" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </g>
+    </symbol>
+    <symbol id="i-activity" viewBox="0 0 24 24">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="i-package" viewBox="0 0 24 24">
+      <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/>
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </g>
+    </symbol>
+  </defs>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="RateGate, back to top">
+      <svg viewBox="0 0 60 60" aria-hidden="true"><use href="#i-mark"/></svg>
+      <span class="tt">Rate<b>Gate</b></span>
+    </a>
+    <nav class="nav-links" aria-label="Page sections">
+      <a href="#playground">Playground</a>
+      <a href="#scenarios">Scenarios</a>
+      <a href="#algorithms">Algorithms</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#benchmarks">Benchmarks</a>
+      <a href="#quickstart">Quickstart</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="gh-btn" href="https://github.com/Abolfazlrwm/rategate" target="_blank" rel="noopener">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-github"/></svg>
+        <span class="gh-txt">GitHub</span><span class="gh-star">Star</span>
+      </a>
+      <a class="btn btn-primary btn-sm" href="#playground"><span class="long">Open the </span>playground</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <span class="chip"><span class="dot live"></span>Live · the real algorithms, in your browser</span>
+        <h1>Rate limiting you can <span class="grad">watch work</span>.</h1>
+        <p class="lede">RateGate is an open-source, distributed rate limiter for Go: token bucket, sliding window and adaptive AIMD policies behind one REST and gRPC API, backed by memory or Redis. The playground runs line-by-line ports of the server's own algorithms. Tune a policy, flood it, and see every request admitted or turned away.</p>
+        <div class="cta">
+          <a class="btn btn-primary" href="#playground">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-play"/></svg>Open the playground
+          </a>
+          <a class="btn" href="https://github.com/Abolfazlrwm/rategate" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-star"/></svg>Star on GitHub
+          </a>
+        </div>
+        <div class="snippet">
+          <code id="dockerCmd">docker run --rm -p 8080:8080 -p 9090:9090 -e RATEGATE_STORE_BACKEND=memory ghcr.io/abolfazlrwm/rategate:latest</code>
+          <button class="btn btn-ghost" type="button" data-copy="dockerCmd" aria-label="Copy the docker command" title="Copy">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="card gate-card">
+        <div class="gate-top">
+          <span class="live"><span class="dot live"></span>LIVE SIMULATION</span>
+          <span class="chip" id="heroPolicy">token bucket · burst 20 · refill 12 tok/s</span>
+        </div>
+        <div class="gate-stage" id="heroStage" role="button" tabindex="0" aria-label="Live simulation of a token bucket. Activate to send a burst of 24 requests through the gate.">
+          <canvas id="heroGate" width="640" height="340"></canvas>
+          <div class="gate-counts">
+            <span class="ok"><span class="dot ok"></span>allowed <b id="heroAllowed">0</b></span>
+            <span class="no"><span class="dot no"></span>denied <b id="heroDenied">0</b></span>
+          </div>
+        </div>
+        <div class="gate-foot">
+          <span class="legend">Requests arrive from the left. The gate admits what the bucket can pay for.</span>
+          <span class="cta-hint">Click it to fire a burst of 24 <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="hero-stats">
+        <div class="stat"><b>40 ns</b><span>per token-bucket check, zero allocations</span></div>
+        <div class="stat"><b>120k+</b><span>REST requests per second on an 8-core laptop</span></div>
+        <div class="stat"><b>100%</b><span>test coverage on algorithms and store, enforced in CI</span></div>
+        <div class="stat"><b>3 / 3</b><span>algorithms · pluggable stores: memory, Redis, Redis Cluster</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="playground" id="playground" aria-label="Interactive playground">
+    <noscript><p class="noscript">The playground needs JavaScript. Everything else on this page, including the quickstart below, works without it.</p></noscript>
+    <div class="wrap">
+      <div class="app">
+        <div class="pg-bar">
+          <div class="seg" role="group" aria-label="Algorithm" id="algoTabs">
+            <button type="button" data-algo="tokenbucket" aria-pressed="true">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-bucket"/></svg>Token bucket
+            </button>
+            <button type="button" data-algo="slidingwindow" aria-pressed="false">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-window"/></svg><span class="alg-long">Sliding </span>window
+            </button>
+            <button type="button" data-algo="adaptive" aria-pressed="false">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><use href="#i-aimd"/></svg><span class="alg-long">Adaptive </span>AIMD
+            </button>
+          </div>
+          <div class="transport">
+            <button class="btn btn-primary" type="button" id="btnPlay" aria-pressed="true" title="Play or pause (Space)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use id="btnPlayIcon" href="#i-pause"/></svg><span id="btnPlayText">Pause</span>
+            </button>
+            <button class="btn" type="button" id="btnBurst" title="Send 10 requests now (B)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-zap"/></svg>Send ×10
+            </button>
+            <button class="btn" type="button" id="btnReset" title="Reset all state (R)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reset"/></svg>Reset
+            </button>
+            <div class="seg" role="group" aria-label="Simulation speed" id="speedSeg">
+              <button type="button" data-speed="1" aria-pressed="true">1×</button>
+              <button type="button" data-speed="4" aria-pressed="false">4×</button>
+              <button type="button" data-speed="16" aria-pressed="false">16×</button>
+            </div>
+            <span class="clock" title="Simulated time since the last reset">
+              <span class="dot live" id="clockDot"></span><span class="t" id="simClock">00:00:00.000</span>
+            </span>
+            <button class="btn btn-ghost" type="button" id="btnShare" title="Copy a link to this setup" aria-label="Copy a link to this setup">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-link"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi">
+            <div class="k-label">Offered load</div>
+            <div class="k-value"><span id="kOffered">12</span><small>req/s</small></div>
+            <div class="k-sub" id="kOfferedSub">steady traffic · 1×</div>
+          </div>
+          <div class="kpi ok">
+            <div class="k-label">Allowed</div>
+            <div class="k-value" id="kAllowed">0</div>
+            <div class="k-sub">200 OK</div>
+          </div>
+          <div class="kpi no">
+            <div class="k-label">Denied</div>
+            <div class="k-value" id="kDenied">0</div>
+            <div class="k-sub">429 Too Many Requests</div>
+          </div>
+          <div class="kpi">
+            <div class="k-label">Allow rate</div>
+            <div class="k-value" id="kRate">—</div>
+            <div class="k-bar"><i id="kRateBar"></i></div>
+          </div>
+          <div class="kpi">
+            <div class="k-label" id="kLimitLabel">Burst</div>
+            <div class="k-value" id="kLimit">10</div>
+            <div class="k-sub" id="kLimitSub">refill 8 tok/s</div>
+          </div>
+        </div>
+
+        <div class="pg">
+          <div class="pg-controls">
+            <div class="card">
+              <div class="card-h"><h3>Policy</h3><span class="hint mono" id="policyFile">tokenbucket.go</span></div>
+              <div class="card-b ctl">
+                <div class="field">
+                  <label for="keyInput">Rate-limit key</label>
+                  <input class="text" id="keyInput" type="text" value="user:1" maxlength="48" spellcheck="false" autocomplete="off" autocapitalize="off">
+                </div>
+                <div class="field">
+                  <span class="lbl">Keys receiving traffic</span>
+                  <div class="seg" role="group" aria-label="Number of keys" id="keysSeg">
+                    <button type="button" data-keys="1" aria-pressed="true">1</button>
+                    <button type="button" data-keys="3" aria-pressed="false">3</button>
+                    <button type="button" data-keys="5" aria-pressed="false">5</button>
+                  </div>
+                </div>
+                <div class="field" id="fLimit">
+                  <div class="lbl"><label for="sLimit" id="lLimit">Burst (capacity)</label><output id="vLimit" for="sLimit">10 tokens</output></div>
+                  <input type="range" id="sLimit" min="1" max="200" step="1" value="10" aria-labelledby="lLimit">
+                </div>
+                <div class="field" id="fRefill">
+                  <div class="lbl"><label for="sRefill">Refill rate</label><output id="vRefill" for="sRefill">8 tok/s</output></div>
+                  <input type="range" id="sRefill" min="0.5" max="50" step="0.5" value="8" aria-labelledby="sRefill">
+                </div>
+                <div class="field" id="fWindow" hidden>
+                  <div class="lbl"><label for="sWindow" id="lWindow">Window</label><output id="vWindow" for="sWindow">10 s</output></div>
+                  <input type="range" id="sWindow" min="0" max="12" step="1" value="8" aria-labelledby="lWindow">
+                </div>
+                <p class="note" id="policyNote">A fresh key starts with a full bucket, so it can burst up to 10 requests, then settles to 8 per second.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Traffic</h3><span class="hint">Poisson arrivals</span></div>
+              <div class="card-b ctl">
+                <div class="field">
+                  <span class="lbl">Shape</span>
+                  <div class="seg grid2" role="group" aria-label="Traffic shape" id="shapeSeg">
+                    <button type="button" data-shape="steady" aria-pressed="true"><svg viewBox="0 0 48 16" aria-hidden="true"><use href="#i-sh-steady"/></svg>Steady</button>
+                    <button type="button" data-shape="burst" aria-pressed="false"><svg viewBox="0 0 48 16" aria-hidden="true"><use href="#i-sh-burst"/></svg>Bursts</button>
+                    <button type="button" data-shape="ramp" aria-pressed="false"><svg viewBox="0 0 48 16" aria-hidden="true"><use href="#i-sh-ramp"/></svg>Ramp</button>
+                    <button type="button" data-shape="wave" aria-pressed="false"><svg viewBox="0 0 48 16" aria-hidden="true"><use href="#i-sh-wave"/></svg>Wave</button>
+                  </div>
+                </div>
+                <div class="field">
+                  <div class="lbl"><label for="sRate">Arrival rate</label><output id="vRate" for="sRate">12 req/s</output></div>
+                  <input type="range" id="sRate" min="0" max="100" step="1" value="47">
+                </div>
+                <p class="note" id="rateNote">The policy can sustain 8 req/s, so about two thirds of this traffic gets through.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Keys</h3><span class="hint">state is per key</span></div>
+              <div class="tbl">
+                <table class="keys">
+                  <thead><tr><th scope="col">key</th><th scope="col" class="n">allowed</th><th scope="col" class="n">denied</th><th scope="col" class="n">left</th></tr></thead>
+                  <tbody id="keysBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="pg-stage">
+            <div class="card flow">
+              <canvas id="flow" width="700" height="210" role="img" aria-label="Requests flowing from the left into the rate-limiting gate. Green ones are admitted, red ones are turned away."></canvas>
+              <div class="flow-label tl">incoming <b id="flowIn">12</b> req/s<small id="flowInSub">steady</small></div>
+              <div class="flow-label tr"><span class="ok">allowed <b id="flowOkPct">—</b></span><small><b id="flowOk">0</b> passed the gate</small></div>
+              <div class="flow-label bl" id="flowBl">1 key</div>
+              <div class="flow-label br"><span class="no">denied <b id="flowNoPct">—</b></span><small><b id="flowNo">0</b> turned away</small></div>
+            </div>
+
+            <div class="card viz">
+              <div class="card-h"><h3 id="vizTitle">Token bucket</h3><span class="hint mono" id="vizHint">user:1</span></div>
+              <div class="viz-body">
+                <canvas id="viz" width="640" height="168" role="img" aria-label="Token bucket for the selected key"></canvas>
+                <div class="viz-overlay" aria-hidden="true">
+                  <div class="v-main"><span id="vizMain">10.0</span><small id="vizMainUnit">/ 10 tokens</small></div>
+                  <div class="v-row"><span id="vizS1">refill 8 tok/s</span><span id="vizS2">full</span></div>
+                </div>
+              </div>
+              <div class="meter" id="aimdMeter" hidden>
+                <div class="m-track"><i id="meterFill"></i><span class="m-cap" id="meterCap"></span></div>
+                <div class="m-text"><span id="meterText">0 of 20 admitted in this window</span><span id="meterNext">closes in 2.0 s</span></div>
+              </div>
+            </div>
+
+            <div class="card chart">
+              <div class="c-title" id="chartTitle">Decisions per half-second, over the last 30 seconds of simulated time.</div>
+              <canvas id="chart" width="640" height="236" role="img" aria-label="Stacked bar chart of allowed and denied requests over time"></canvas>
+              <div class="legend">
+                <span><i></i>allowed</span>
+                <span><i class="no"></i>denied</span>
+                <span><i class="ref"></i><span id="refLabel">what the policy sustains</span></span>
+              </div>
+              <div class="tip" id="chartTip" aria-hidden="true"></div>
+            </div>
+          </div>
+
+          <div class="pg-side">
+            <div class="card">
+              <div class="card-h"><h3>Why this decision</h3><span class="hint mono" id="whyKey">user:1</span></div>
+              <div class="card-b">
+                <div class="why-verdict">
+                  <span class="v" id="whyVerdict">Waiting</span>
+                  <span class="code" id="whyCode">—</span>
+                </div>
+                <p class="why-text" id="whyText">Send a request to see the server's reasoning for it.</p>
+                <div class="why-bar" id="whyBar"><i></i></div>
+                <div class="why-meta">
+                  <div><span id="whyM1Label">Bucket full in</span><b id="whyM1">—</b></div>
+                  <div><span id="whyM2Label">Retry-After</span><b id="whyM2">—</b></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card http">
+              <div class="card-h"><h3>The wire</h3><span class="hint">POST /v1/check</span></div>
+              <div class="card-b">
+                <div class="req"><b>POST /v1/check HTTP/1.1</b><span class="st" id="httpStatus">waiting</span></div>
+                <pre id="httpPre" tabindex="0" aria-label="The HTTP request and response for the most recent decision">Waiting for the first request.</pre>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-h"><h3>Decisions</h3><span class="hint">newest first</span></div>
+              <ul class="feed" id="feedList" aria-label="Recent decisions">
+                <li class="empty">Waiting for the first request.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card pg-export">
+            <div class="card-h">
+              <div class="tabs" role="tablist" aria-label="Use this policy in your own code" id="exportTabs">
+                <button type="button" role="tab" data-tab="curl" aria-selected="true" id="tab-curl" aria-controls="exportCode">curl</button>
+                <button type="button" role="tab" data-tab="go" aria-selected="false" id="tab-go" aria-controls="exportCode" tabindex="-1">Go SDK</button>
+                <button type="button" role="tab" data-tab="grpcurl" aria-selected="false" id="tab-grpcurl" aria-controls="exportCode" tabindex="-1">grpcurl</button>
+                <button type="button" role="tab" data-tab="gin" aria-selected="false" id="tab-gin" aria-controls="exportCode" tabindex="-1">Gin middleware</button>
+                <button type="button" role="tab" data-tab="policy" aria-selected="false" id="tab-policy" aria-controls="exportCode" tabindex="-1">Named policy</button>
+              </div>
+              <button class="btn btn-ghost btn-sm" type="button" id="btnCopyCode" title="Copy to the clipboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>Copy
+              </button>
+            </div>
+            <pre class="code" id="exportCode" role="tabpanel" aria-labelledby="tab-curl" tabindex="0"></pre>
+          </div>
+        </div>
+
+        <div class="shortcuts" aria-hidden="true">
+          <span><kbd>Space</kbd> play / pause</span>
+          <span><kbd>B</kbd> send 10</span>
+          <span><kbd>R</kbd> reset</span>
+          <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> algorithm</span>
+          <span>Changing a policy or key clears its counters.</span>
+        </div>
+        <p class="sr-only" id="srSummary" aria-live="polite">Playground started.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="scenarios">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Scenarios</span>
+        <h2>Six real policies. One click to load each.</h2>
+        <p>Every card is a complete setup: algorithm, policy, traffic shape and speed. The small chart on each card is the outcome, computed by the same engine that drives the playground.</p>
+      </div>
+      <div class="scenarios">
+        <button class="card scenario reveal" type="button" data-scene="burst">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Launch-day burst</h3>
+          <p>Traffic jumps to 128 req/s against a 20-token bucket that refills 5 a second. The first 20 pass; the rest are refused until tokens accrue.</p>
+          <span class="s-foot"><span>token bucket · 20 burst · 5 tok/s</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+        <button class="card scenario reveal" type="button" data-scene="quota">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Three per minute, no exceptions</h3>
+          <p>A hard sliding-window quota. The first three requests pass; everything else gets 429 with an exact Retry-After until the oldest one leaves the window.</p>
+          <span class="s-foot"><span>sliding window · 3 / 60 s · 16×</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+        <button class="card scenario reveal" type="button" data-scene="spike">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Ride the spike</h3>
+          <p>Demand ramps from 20 to 380 req/s and back. The ceiling follows it: up 5 per window while traffic grows, halved when it falls, between a floor of 20 and a cap of 80.</p>
+          <span class="s-foot"><span>adaptive AIMD · floor 20 · 2 s window</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+        <button class="card scenario reveal" type="button" data-scene="tenants">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Noisy neighbour</h3>
+          <p>One tenant sends 60% of the traffic. Its bucket empties and a third of its requests are refused; the other four keys never notice.</p>
+          <span class="s-foot"><span>5 keys · token bucket · 10 / 5</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+        <button class="card scenario reveal" type="button" data-scene="slow">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Protect a slow endpoint</h3>
+          <p>An eight-request window of half a second caps the backend at 16 req/s. Load waves between 6 and 54 req/s; whatever exceeds 16 is clipped, so the backend never sees more.</p>
+          <span class="s-foot"><span>sliding window · 8 / 500 ms</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+        <button class="card scenario reveal" type="button" data-scene="trickle">
+          <div class="s-spark" aria-hidden="true"></div>
+          <h3>Ten calls per second, on average</h3>
+          <p>A five-request burst, then ten tokens a second. A client pushing 40 req/s gets a quarter of its calls through once the burst is spent.</p>
+          <span class="s-foot"><span>token bucket · 5 burst · 10 tok/s</span><span class="go" aria-hidden="true">Load <svg class="arr" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 8h11M9.5 4l4 4-4 4"/></svg></span></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="algorithms">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Algorithms</span>
+        <h2>Three ways to say no. Pick by what you need to guarantee.</h2>
+        <p>All three answer the same question, "may this key proceed?", but they differ in what they promise over time, what each key costs in memory, and which stores can run them.</p>
+      </div>
+      <div class="card cmp reveal">
+        <div class="tbl">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Property</th>
+                <th scope="col">Token bucket</th>
+                <th scope="col">Sliding window</th>
+                <th scope="col">Adaptive (AIMD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Best for</td>
+                <td>API quotas that should tolerate short bursts</td>
+                <td>Hard limits such as "N per minute"</td>
+                <td>Backends whose capacity you cannot predict</td>
+              </tr>
+              <tr>
+                <td>Bursts</td>
+                <td>Up to <code>limit</code> at once; a new key starts full</td>
+                <td>Up to <code>limit</code> inside one window</td>
+                <td>Up to the effective limit per window</td>
+              </tr>
+              <tr>
+                <td>Long-run promise</td>
+                <td>An average of <code>refill_per_second</code></td>
+                <td>No more than <code>limit</code> per window*</td>
+                <td>Effective limit inside [floor, 4 × floor]</td>
+              </tr>
+              <tr>
+                <td>Memory per key</td>
+                <td>About 48 B</td>
+                <td>About 960 B in memory (60 sub-buckets)</td>
+                <td>A handful of fields, no ring</td>
+              </tr>
+              <tr>
+                <td>Check cost</td>
+                <td>40 ns/op, 0 allocations</td>
+                <td>153 ns/op, 0 allocations</td>
+                <td>Not in the benchmark suite yet</td>
+              </tr>
+              <tr>
+                <td>Stores</td>
+                <td>memory, Redis, Redis Cluster</td>
+                <td>memory, Redis, Redis Cluster</td>
+                <td>memory only</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="note reveal">* The memory store counts in sub-buckets of window ÷ 60, so a request can leave the window up to one sub-bucket early. The Redis stores keep an exact sorted set of timestamps instead. Numbers are from <span class="mono">docs/benchmarks.md</span>.</p>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Features</span>
+        <h2>Built like infrastructure, not a snippet.</h2>
+        <p>RateGate is a standalone service with a client SDK, not a library you wedge into each binary. That is what lets a fleet share one set of limits.</p>
+      </div>
+      <div class="bento">
+        <div class="card feature wide reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-layers"/></svg></div>
+          <h3>One check, your pick of transport</h3>
+          <p>Every integration ends in the same atomic question: may this key proceed? Send it over REST or gRPC, or let the Go middleware ask on every request for you.</p>
+          <ul>
+            <li><code>POST /v1/check</code> returns the decision plus <code>X-RateLimit-*</code> headers</li>
+            <li><code>rategate.v1.RateGateService/CheckRateLimit</code> over gRPC, with reflection</li>
+            <li><code>GinMiddleware</code> and <code>StdlibMiddleware</code> for Go web services</li>
+            <li><code>client.NewHTTPClient</code> and <code>client.NewGRPCClient</code> in the Go SDK</li>
+          </ul>
+        </div>
+        <div class="card feature wide reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-database"/></svg></div>
+          <h3>Pluggable storage, one contract</h3>
+          <p>The memory store runs sharded, allocation-free limiters in-process. The Redis stores run the same algorithms as single-key Lua scripts, so a fleet of rate-limit servers shares one truth in one round trip per check.</p>
+          <ul>
+            <li>Memory: about 48 B per token-bucket key, 960 B per sliding-window key</li>
+            <li>Redis and Redis Cluster: atomic Lua scripts and a TTL on every key</li>
+            <li>A janitor evicts idle keys (<code>memory_sweep_idle</code>, default 1h)</li>
+          </ul>
+        </div>
+        <div class="card feature reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-activity"/></svg></div>
+          <h3>Demand-aware ceilings</h3>
+          <p>The adaptive limiter raises its limit while demand grows and halves it when demand falls, always inside [floor, 4 × floor]. In-memory store only.</p>
+        </div>
+        <div class="card feature reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-shield"/></svg></div>
+          <h3>Fails the way you choose</h3>
+          <p>Store errors deny by default. Set <code>fail_open: true</code> to trade safety for availability, or <code>FailClosed</code> on the middleware to do the reverse.</p>
+        </div>
+        <div class="card feature reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-pulse"/></svg></div>
+          <h3>Observable by default</h3>
+          <p>Prometheus metrics on <code>/metrics</code>, optional OpenTelemetry tracing, and structured slog output with request counters for allowed and denied checks.</p>
+        </div>
+        <div class="card feature reveal">
+          <div class="f-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-package"/></svg></div>
+          <h3>Ships small</h3>
+          <p>Static binaries for Linux and macOS on amd64 and arm64, a distroless non-root container, Kubernetes manifests, and about 12 MB of RSS at idle.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="architecture">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Architecture</span>
+        <h2>A request's path through RateGate.</h2>
+        <p>A check is one atomic evaluation of one key against one policy. The core validates the policy, picks the store, and turns the store's answer into a decision with a reset time and, on denial, a retry hint.</p>
+      </div>
+      <div class="arch reveal">
+        <div class="arch-row">
+          <div class="phase">
+            <div class="p-title"><b>1</b>Clients</div>
+            <div class="node">Your service<small>Go SDK · Gin or net/http middleware</small></div>
+            <div class="node">Anything else<small>curl · grpcurl · any HTTP client</small></div>
+          </div>
+          <div class="phase">
+            <div class="p-title"><b>2</b>Transport</div>
+            <div class="node hi">REST · :8080<small>POST /v1/check · /healthz · /metrics</small></div>
+            <div class="node">gRPC · :9090<small>CheckRateLimit · reflection</small></div>
+          </div>
+          <div class="phase">
+            <div class="p-title"><b>3</b>Core</div>
+            <div class="node">Auth<small>x-api-key, optional</small></div>
+            <div class="node hi">Policy registry<small>named policies · inline overrides</small></div>
+            <div class="node">Fail open or closed<small>when the store errors</small></div>
+          </div>
+          <div class="phase">
+            <div class="p-title"><b>4</b>State</div>
+            <div class="node alt">Memory<small>sharded · idle sweeper</small></div>
+            <div class="node">Redis / Redis Cluster<small>atomic Lua scripts</small></div>
+          </div>
+        </div>
+        <div class="arch-side">
+          <div class="phase">
+            <div class="p-title">Admin API</div>
+            <div class="node">Policies at runtime<small>POST /v1/admin/policies · gRPC AdminService</small></div>
+          </div>
+          <div class="phase">
+            <div class="p-title">Observability</div>
+            <div class="node">Metrics, traces, logs<small>Prometheus · OpenTelemetry · slog</small></div>
+          </div>
+          <div class="phase">
+            <div class="p-title">Deploy</div>
+            <div class="node">Binary · container · Kubernetes<small>Linux and macOS · distroless image</small></div>
+          </div>
+        </div>
+        <p class="arch-cap reveal">Named policies can be created, updated and deleted at runtime through the admin API. The change lands in the same registry the check path reads, so it applies to the next request on every transport without a restart. Runtime changes are not written back to the YAML file; a restart reseeds from it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="benchmarks">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Benchmarks</span>
+        <h2>The limiter should never be the slow part.</h2>
+        <p>Micro-benchmarks from <span class="mono">docs/benchmarks.md</span>, measured on a 2-vCPU Intel Xeon sandbox with Go 1.26.0. The last row is the full REST path: Gin, JSON, core and memory store. Bars use a log scale.</p>
+      </div>
+      <div class="card bench reveal">
+        <div class="tbl">
+          <table>
+            <thead>
+              <tr><th scope="col">Benchmark</th><th scope="col" class="n">ns/op</th><th scope="col" class="n">allocs/op</th><th scope="col">Throughput per core (log scale)</th><th scope="col" class="n">req/s</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>TokenBucket_CheckSingleKey</td><td class="n">40</td><td class="n">0</td><td><div class="bar"><i class="b1"></i></div></td><td class="n">25.0M</td></tr>
+              <tr><td>TokenBucket_CheckParallel</td><td class="n">60</td><td class="n">0</td><td><div class="bar"><i class="b2"></i></div></td><td class="n">16.7M</td></tr>
+              <tr><td>SlidingWindow_CheckParallel</td><td class="n">176</td><td class="n">0</td><td><div class="bar"><i class="b3"></i></div></td><td class="n">5.7M</td></tr>
+              <tr><td>SlidingWindow_ApproxCheckParallel</td><td class="n">67</td><td class="n">0</td><td><div class="bar"><i class="b4"></i></div></td><td class="n">14.9M</td></tr>
+              <tr class="hl"><td>REST, end to end</td><td class="n">11,546</td><td class="n">48</td><td><div class="bar"><i class="b5"></i></div></td><td class="n">87k</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="bench-foot">
+          <div><b>~12 MB</b><span>RSS at idle, memory store, no traffic</span></div>
+          <div><b>~48 B</b><span>per tracked token-bucket key</span></div>
+          <div><b>~960 B</b><span>per sliding-window key at granularity 60</span></div>
+        </div>
+      </div>
+      <p class="note reveal">Every pull request gets a benchstat diff, and a regression above 10% on any benchmark blocks merge pending review.</p>
+    </div>
+  </section>
+
+  <section class="section" id="quickstart">
+    <div class="wrap">
+      <div class="sec-head reveal">
+        <span class="eyebrow">Quickstart</span>
+        <h2>Rate-limited in three commands.</h2>
+        <p>No cluster, no sidecar, no configuration file needed for a first check. The container listens on both ports and starts with the in-memory store.</p>
+      </div>
+      <div class="steps">
+        <div class="card step reveal">
+          <div class="n">1</div>
+          <div>
+            <h3>Start a server</h3>
+            <p>A distroless image that runs as a non-root user, built for amd64 and arm64.</p>
+            <div class="codebox">
+              <pre id="qs1">docker run --rm -p 8080:8080 -p 9090:9090 -e RATEGATE_STORE_BACKEND=memory ghcr.io/abolfazlrwm/rategate:latest</pre>
+              <button class="btn btn-ghost btn-sm copy" type="button" data-copy="qs1" aria-label="Copy this command"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="card step reveal">
+          <div class="n">2</div>
+          <div>
+            <h3>Send a check</h3>
+            <p>The body carries the key and an inline policy. Change <code>limit</code> or <code>refill_per_second</code> and the decision follows.</p>
+            <div class="codebox">
+              <pre id="qs2" data-copy-until-blank="1">curl -i -X POST localhost:8080/v1/check \
+  -H 'Content-Type: application/json' \
+  -d '{"key":"user:1","algorithm":"tokenbucket","limit":10,"refill_per_second":8}'
+
+HTTP/1.1 200 OK
+Content-Type: application/json; charset=utf-8
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 9
+X-RateLimit-Reset: 1795430400
+
+{"allowed":true,"remaining":9,"limit":10,"reset_at_unix_ms":1795430400125,"retry_after_ms":0,"algorithm":"tokenbucket"}</pre>
+              <button class="btn btn-ghost btn-sm copy" type="button" data-copy="qs2" aria-label="Copy this command"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button>
+            </div>
+          </div>
+        </div>
+        <div class="card step reveal">
+          <div class="n">3</div>
+          <div>
+            <h3>Guard a route</h3>
+            <p>The middleware asks RateGate once per request and writes the same headers you saw above. A denied request never reaches your handler.</p>
+            <div class="codebox">
+              <pre id="qs3">limiter := rategateclient.NewHTTPClient("http://localhost:8080")
+
+r := gin.Default()
+r.Use(rategatemw.GinMiddleware(limiter, rategatemw.Options{
+    KeyFunc: func(req *http.Request) string { return "user:" + req.Header.Get("X-User-Id") },
+    Algorithm: "tokenbucket",
+    Limit:     10,
+    Refill:    8, // 8 tokens per second, burst of 10
+}))</pre>
+              <button class="btn btn-ghost btn-sm copy" type="button" data-copy="qs3" aria-label="Copy this code"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-copy"/></svg>Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="f-grid">
+      <div class="f-brand">
+        <a class="brand" href="#top">
+          <svg viewBox="0 0 60 60" aria-hidden="true"><use href="#i-mark"/></svg>
+          <span class="tt">Rate<b>Gate</b></span>
+        </a>
+        <p>A distributed rate limiter for Go, built in public under the Apache 2.0 license.</p>
+        <p>The playground is a static page. Its three algorithms are line-by-line JavaScript ports of <span class="mono">internal/algorithms</span>, replayed against the Go unit tests, and nothing you type here leaves your browser.</p>
+      </div>
+      <div>
+        <h4>Project</h4>
+        <ul>
+          <li><a href="https://github.com/Abolfazlrwm/rategate" target="_blank" rel="noopener">GitHub repository</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/releases" target="_blank" rel="noopener">Releases</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/actions" target="_blank" rel="noopener">CI runs</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Docs</h4>
+        <ul>
+          <li><a href="https://github.com/Abolfazlrwm/rategate#readme" target="_blank" rel="noopener">README</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/docs/architecture.md" target="_blank" rel="noopener">Architecture</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/docs/api-reference.md" target="_blank" rel="noopener">API reference</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/tree/main/docs/adr" target="_blank" rel="noopener">Design decisions (ADRs)</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Contribute</h4>
+        <ul>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/issues" target="_blank" rel="noopener">Report an issue</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/SECURITY.md" target="_blank" rel="noopener">Security policy</a></li>
+          <li><a href="https://github.com/Abolfazlrwm/rategate/blob/main/LICENSE" target="_blank" rel="noopener">Apache 2.0 license</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="f-legal">
+      <span>© 2026 Abolfazlrwm and the RateGate contributors · Apache-2.0</span>
+      <span>Typefaces: Inter and JetBrains Mono, SIL Open Font License 1.1</span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>

@@ -1,0 +1,30 @@
+name: playground
+on:
+  push:
+    branches: [main]
+    paths:
+      - "playground/**"
+      - "docs/index.html"
+      - ".github/workflows/playground.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "playground/**"
+      - "docs/index.html"
+      - ".github/workflows/playground.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Unit tests (algorithms + appcore)
+        run: node --test playground/test/algorithms.test.cjs playground/test/appcore.test.cjs
+      - name: Build smoke (assembles the page, node --check, glyph coverage, CSP hashes)
+        run: |
+          python3 playground/build.py /tmp/index.html
+          test -s /tmp/index.html
