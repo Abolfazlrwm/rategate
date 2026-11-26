@@ -65,6 +65,7 @@ type alShard struct {
 type alState struct {
 	limit       float64   // current effective limit, in [floor, cap]
 	windowStart time.Time // start of the current sampling window
+	lastSeen    time.Time // updated on every Check; the idle stamp Sweep uses
 	prevTotal   int64     // total requests observed in the previous window
 	count       int64     // admitted requests in the current window
 	rejects     int64     // rejected requests in the current window
@@ -135,7 +136,7 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 
 	st, ok := shard.states[key]
 	if !ok {
-		st = &alState{limit: floor, windowStart: now}
+		st = &alState{limit: floor, windowStart: now, lastSeen: now}
 		shard.states[key] = st
 	}
 
@@ -185,6 +186,11 @@ func (a *AdaptiveLimiter) Check(key string, policy Policy, now time.Time) (Decis
 		// now+Window, and the no-close branch only runs when now < windowEnd.
 		d.RetryAfter = windowEnd.Sub(now)
 	}
+	// Every Check is activity: stamp it so Sweep (which measures idle time
+	// off lastSeen) never evicts a key mid-window. windowStart only advances
+	// on window rollover, so without this a key with a long Policy.Window
+	// could be dropped while still actively receiving traffic.
+	st.lastSeen = now
 	return d, nil
 }
 
@@ -204,15 +210,15 @@ func (a *AdaptiveLimiter) Reset() {
 }
 
 // Sweep evicts adaptive state for keys idle longer than `idle` (measured from
-// the sampling window start, which every Check refreshes) and returns the
-// number of entries removed. Called by the server janitor to bound memory;
-// an evicted key starts over at the policy floor on its next Check.
+// the last Check, which every call refreshes via lastSeen) and returns the
+// number of entries removed. Called by the server janitor to bound memory; an
+// evicted key starts over at the policy floor on its next Check.
 func (a *AdaptiveLimiter) Sweep(now time.Time, idle time.Duration) int {
 	removed := 0
 	for _, s := range a.shards {
 		s.mu.Lock()
 		for key, st := range s.states {
-			if now.Sub(st.windowStart) > idle {
+			if now.Sub(st.lastSeen) > idle {
 				delete(s.states, key)
 				removed++
 			}

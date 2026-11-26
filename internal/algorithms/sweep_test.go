@@ -104,3 +104,65 @@ func TestSlidingWindowSweepUsesDecayStampForApproximate(t *testing.T) {
 		t.Fatalf("size=%d want 0 after both sweeps", sw.ApproxSize())
 	}
 }
+
+func TestSlidingWindowSweepKeepsActiveExactKey(t *testing.T) {
+	// Regression: lastRotate must advance on every Check, so an exact-mode
+	// key still receiving traffic survives a Sweep whose idle window is shorter
+	// than the key's age. Before the fix lastRotate stayed at state creation and
+	// the janitor dropped the active key — a rate-limit bypass, since the next
+	// request rebuilt a fresh window with count 0.
+	sw := NewSlidingWindow(SlidingWindowOptions{Shards: 4, Granularity: 6})
+	policy := Policy{Limit: 5, Window: time.Minute}
+	t0 := time.Date(2025, 11, 12, 10, 0, 0, 0, time.UTC)
+
+	if _, err := sw.Check("k", policy, t0); err != nil {
+		t.Fatalf("check t0: %v", err)
+	}
+	// Second hit well inside the window: the key is 30s old but was active 25s ago.
+	if _, err := sw.Check("k", policy, t0.Add(30*time.Second)); err != nil {
+		t.Fatalf("check t0+30s: %v", err)
+	}
+	// Sweep at t0+50s with idle 30s: last activity was t0+30s, only 20s ago, so
+	// the key must survive even though it is 50s old.
+	if got := sw.Sweep(t0.Add(50*time.Second), 30*time.Second); got != 0 {
+		t.Fatalf("active key was evicted: removed %d, want 0", got)
+	}
+	if sw.ApproxSize() != 1 {
+		t.Fatalf("size=%d want 1 (active key survives)", sw.ApproxSize())
+	}
+	// A sweep past the last activity does evict it.
+	if got := sw.Sweep(t0.Add(90*time.Second), 30*time.Second); got != 1 {
+		t.Fatalf("idle sweep removed %d, want 1", got)
+	}
+}
+
+func TestAdaptiveSweepKeepsActiveMidWindowKey(t *testing.T) {
+	// Regression: windowStart only advances on window rollover, so without a
+	// per-Check lastSeen stamp a key with a long Policy.Window would be evicted
+	// mid-window while still active — resetting its effective limit to the floor
+	// and its counters to zero, which lets a burst through on the next Check.
+	al := NewAdaptiveLimiter(AdaptiveOptions{Shards: 4})
+	policy := Policy{Limit: 3, Window: 2 * time.Minute}
+	t0 := time.Date(2025, 11, 12, 10, 0, 0, 0, time.UTC)
+
+	if _, err := al.Check("k", policy, t0); err != nil {
+		t.Fatalf("check t0: %v", err)
+	}
+	// Re-check 30s later, still inside the same 2-minute window.
+	if _, err := al.Check("k", policy, t0.Add(30*time.Second)); err != nil {
+		t.Fatalf("check t0+30s: %v", err)
+	}
+	// Sweep at t0+90s with idle 60s: last activity was t0+30s, exactly 60s ago
+	// (not greater than idle), so the key must survive even though its
+	// windowStart is still t0 (90s old).
+	if got := al.Sweep(t0.Add(90*time.Second), 60*time.Second); got != 0 {
+		t.Fatalf("active mid-window key was evicted: removed %d, want 0", got)
+	}
+	if al.ApproxSize() != 1 {
+		t.Fatalf("size=%d want 1 (active key survives)", al.ApproxSize())
+	}
+	// Past the last activity by more than idle, it is evicted.
+	if got := al.Sweep(t0.Add(120*time.Second), 60*time.Second); got != 1 {
+		t.Fatalf("idle sweep removed %d, want 1", got)
+	}
+}

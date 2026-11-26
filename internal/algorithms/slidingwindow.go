@@ -194,6 +194,11 @@ func (s *SlidingWindow) checkExact(st *swState, policy Policy, now time.Time) (D
 			d.RetryAfter = expire.Sub(now)
 		}
 	}
+	// Every Check is activity: stamp it so the janitor's Sweep (which keys
+	// idle time off lastRotate for exact-mode keys) never evicts a key that is
+	// actively receiving traffic. Without this, lastRotate stays at state
+	// creation and a key used for longer than the idle window is wrongly dropped.
+	st.lastRotate = now
 	return d, nil
 }
 
