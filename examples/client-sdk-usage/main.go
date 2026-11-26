@@ -44,7 +44,7 @@ func main() {
 		})
 		if err != nil {
 			if httpErr, ok := err.(*client.HTTPError); ok && httpErr.IsDenied() {
-				fmt.Printf("check %d: DENIED (retry_after_ms=%d)\n", i, resp2retry(resp))
+				fmt.Printf("check %d: DENIED (retry_after_ms=%d)\n", i, httpErr.RetryAfterMs)
 				continue
 			}
 			fmt.Printf("check %d: error %v\n", i, err)
@@ -63,11 +63,4 @@ func main() {
 	defer gc.Close()
 	status, err := gc.Health(ctx)
 	fmt.Printf("health (grpc): status=%s err=%v\n", status, err)
-}
-
-func resp2retry(resp *client.CheckResponse) int64 {
-	if resp == nil {
-		return 0
-	}
-	return resp.RetryAfterMs
 }

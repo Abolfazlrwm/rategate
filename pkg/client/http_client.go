@@ -80,9 +80,11 @@ type CheckResponse struct {
 	Algorithm     string `json:"algorithm"`
 }
 
-// Check performs a rate-limit check. Returns the parsed response or an error
-// (including a *RateLimitError when the request was denied, so callers can
-// type-switch).
+// Check performs a rate-limit check. Returns the parsed response, or an error
+// when the call could not be completed. A denied request (HTTP 429) comes back
+// as an *HTTPError whose IsDenied reports true and whose Remaining, Limit,
+// ResetAtUnixMs and RetryAfterMs fields carry the server's backoff signal,
+// parsed from the response body and the Retry-After header.
 func (c *HTTPClient) Check(ctx context.Context, req CheckRequest) (*CheckResponse, error) {
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -108,11 +110,37 @@ func (c *HTTPClient) Check(ctx context.Context, req CheckRequest) (*CheckRespons
 	if err != nil {
 		return nil, fmt.Errorf("read body: %w", err)
 	}
-	if resp.StatusCode >= 400 {
-		var errBody struct {
-			Error string `json:"error"`
+	var errBody struct {
+		Error string `json:"error"`
+	}
+	_ = json.Unmarshal(raw, &errBody)
+
+	// A 429 is a rate-limit denial, not a transport failure: the body carries
+	// the structured decision (allowed:false, remaining, limit, retry_after_ms,
+	// reset_at_unix_ms) and the Retry-After header carries the backoff hint.
+	// Surface them on the *HTTPError so callers can honour the backoff instead
+	// of retrying blindly. Other >=400 statuses stay plain transport errors.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		var d CheckResponse
+		_ = json.Unmarshal(raw, &d) // best-effort: body may be a bare error
+		hErr := &HTTPError{
+			Status:        resp.StatusCode,
+			Message:       errBody.Error,
+			Body:          string(raw),
+			Remaining:     d.Remaining,
+			Limit:         d.Limit,
+			ResetAtUnixMs: d.ResetAtUnixMs,
+			RetryAfterMs:  d.RetryAfterMs,
 		}
-		_ = json.Unmarshal(raw, &errBody)
+		// Retry-After header (seconds) takes precedence, matching the success path.
+		if v := resp.Header.Get("Retry-After"); v != "" {
+			if secs, err := strconv.Atoi(v); err == nil {
+				hErr.RetryAfterMs = int64(secs) * 1000
+			}
+		}
+		return nil, hErr
+	}
+	if resp.StatusCode >= 400 {
 		return nil, &HTTPError{Status: resp.StatusCode, Message: errBody.Error, Body: string(raw)}
 	}
 
@@ -146,11 +174,20 @@ func (c *HTTPClient) Health(ctx context.Context) error {
 	return nil
 }
 
-// HTTPError is returned for non-2xx responses.
+// HTTPError is returned for non-2xx responses. For a 429 denial it also
+// carries the rate-limit metadata parsed from the response body and the
+// Retry-After header (Remaining, Limit, ResetAtUnixMs, RetryAfterMs) so
+// callers can honour the server's backoff. These fields are zero on other
+// (transport) errors.
 type HTTPError struct {
 	Status  int
 	Message string
 	Body    string
+	// Populated on 429; zero on other errors.
+	Remaining     int64
+	Limit         int64
+	ResetAtUnixMs int64
+	RetryAfterMs  int64
 }
 
 // Error implements error.

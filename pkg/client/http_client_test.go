@@ -50,7 +50,11 @@ func TestHTTPClient_CheckAllowed(t *testing.T) {
 }
 
 func TestHTTPClient_CheckDenied(t *testing.T) {
-	srv := newTestServer(t, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+	// The 429 body carries the structured decision; the Retry-After header
+	// carries the backoff. Both must reach the caller on the *HTTPError.
+	srv := newTestServer(t, http.StatusTooManyRequests, CheckResponse{
+		Allowed: false, Remaining: 0, Limit: 5, RetryAfterMs: 1500, ResetAtUnixMs: 999, Algorithm: "tokenbucket",
+	})
 	defer srv.Close()
 
 	c := NewHTTPClient(srv.URL)
@@ -70,6 +74,46 @@ func TestHTTPClient_CheckDenied(t *testing.T) {
 	}
 	if httpErr.Status != http.StatusTooManyRequests {
 		t.Fatalf("status=%d want 429", httpErr.Status)
+	}
+	// Rate-limit metadata must survive the 429 so callers can back off.
+	if httpErr.Limit != 5 {
+		t.Fatalf("limit=%d want 5 (from body)", httpErr.Limit)
+	}
+	if httpErr.Remaining != 0 {
+		t.Fatalf("remaining=%d want 0 (from body)", httpErr.Remaining)
+	}
+	if httpErr.ResetAtUnixMs != 999 {
+		t.Fatalf("reset_at_unix_ms=%d want 999 (from body)", httpErr.ResetAtUnixMs)
+	}
+	// Retry-After header (2s) takes precedence over the body's 1500ms.
+	if httpErr.RetryAfterMs != 2000 {
+		t.Fatalf("retry_after_ms=%d want 2000 (Retry-After header overrides body)", httpErr.RetryAfterMs)
+	}
+}
+
+func TestHTTPClient_CheckDeniedHeaderOnly(t *testing.T) {
+	// A 429 with a bare error body (no structured fields) still surfaces the
+	// Retry-After header so the caller can back off.
+	srv := newTestServer(t, http.StatusTooManyRequests, map[string]string{"error": "rate limit exceeded"})
+	defer srv.Close()
+
+	c := NewHTTPClient(srv.URL)
+	_, err := c.Check(context.Background(), CheckRequest{Key: "u"})
+	if err == nil {
+		t.Fatal("expected error on 429")
+	}
+	httpErr, ok := err.(*HTTPError)
+	if !ok {
+		t.Fatalf("err type=%T want *HTTPError", err)
+	}
+	if !httpErr.IsDenied() {
+		t.Fatal("IsDenied should be true for 429")
+	}
+	if httpErr.RetryAfterMs != 2000 {
+		t.Fatalf("retry_after_ms=%d want 2000 (from Retry-After header)", httpErr.RetryAfterMs)
+	}
+	if httpErr.Limit != 0 || httpErr.Remaining != 0 {
+		t.Fatalf("rate-limit fields should be zero for a bare error body, got limit=%d remaining=%d", httpErr.Limit, httpErr.Remaining)
 	}
 }
 
